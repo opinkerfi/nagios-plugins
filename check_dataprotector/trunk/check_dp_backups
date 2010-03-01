@@ -1,0 +1,78 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import subprocess
+import datetime
+import sys
+now = datetime.datetime.now()
+
+
+# return code 3 = No sessions matching the search criteria were found. 
+omnistat_returncode_no_sessions_found=3
+class GenericObject:
+  def __init__(self):
+    self.dict = {}
+
+def runCommand(command):
+  proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE,)
+  stdout, stderr = proc.communicate('through stdin to stdout')
+  if proc.returncode > 0 and proc.returncode != omnistat_returncode_no_sessions_found: 
+    print "Error running '%s' command:\n %s" % (command, stderr)
+    print proc.returncode
+    print stderr, stdout
+    sys.exit(1)
+  else:
+    return stdout
+
+def getSessions():
+  sessions = []
+  date = "%s/%s/%s" % ( now.year, now.month, now.day )
+  output = runCommand( '/opt/omni/bin/omnistat -previous -since %s' % date )
+  for line in output.split('\n')[1:]:
+    tmp = line.split()
+    if len(tmp) < 4: continue
+    sessionID = tmp[0]
+    sessions.append( sessionID )
+    #print sessionID
+  return sessions
+
+def parseSessions(session_list):
+  parsedSessions = []
+  for sessionID in session_list:
+    output = runCommand('/opt/omni/bin/omnidb -rpt %s -detail' % sessionID )
+    session = GenericObject()
+    parsedSessions.append ( session )
+    for line in output.split('\n'):
+      tmp = line.split(':')
+      if len(tmp) != 2: continue
+      key,value = tmp
+      key = key.strip()
+      value = value.strip()
+      session.dict[key] = value
+  return parsedSessions
+
+sessions = getSessions()
+parsedSessions = parseSessions( sessions )
+
+
+total_errors = 0
+total_warnings = 0
+total_size = 0
+total_sessions = 0
+for session in parsedSessions:
+	errors = int( session.dict['Number of errors'] )
+	warnings = int( session.dict['Number of warnings'] )
+	try:
+		size = 1024 * int( session.dict['Session size'].split()[0] )
+	except:
+		size = 0
+	total_errors = total_errors + errors
+	total_warnings = total_warnings + warnings
+	total_size = total_size + size
+	total_sessions += 1
+
+print "Everything is ok | errors=%d warnings=%d size=%dB num_sessions=%dc" % (total_errors,total_warnings,total_size,total_sessions)
+
+
+
+

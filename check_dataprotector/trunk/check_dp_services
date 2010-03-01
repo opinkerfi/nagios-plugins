@@ -1,0 +1,12 @@
+#!/bin/sh
+
+/opt/omni/sbin/omnisv -status | grep "Status: All Data Protector relevant processes/services up and running."
+
+RESULT=$?
+
+if [ $RESULT -gt 0 ]; then
+	echo "Critical, some Data Protector services are in stopped state"
+	exit 1	
+fi
+
+

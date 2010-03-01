@@ -1,0 +1,17 @@
+#!/bin/sh
+
+WARNING=5
+CRITICAL=2
+
+
+/opt/omni/bin/omnirpt -tab -report obj_lastbackup -days -$WARNING | grep -w IDB > /dev/null
+RESULT=$?
+
+
+if [ $RESULT -gt 0 ]; then
+	echo "Warning, Last Dataprotector backup is more than $WARNING days old"
+	exit 1
+fi
+
+echo "Last Dataprotector backup is less than $WARNING days old"
+

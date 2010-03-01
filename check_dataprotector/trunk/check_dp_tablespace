@@ -1,0 +1,28 @@
+#!/bin/sh
+
+
+#/opt/omni/bin/omnirpt -report db_size 
+
+echo $USER > /tmp/check_dp_tablespace.debug
+echo $@ >> /tmp/check_dp_tablespace.debug
+
+
+OUTPUT=$(/opt/omni/bin/omnirpt -report db_size)
+RESULT=$?
+
+if [ $RESULT -gt 0 ]; then
+	echo -n $OUTPUT
+	exit 1
+fi
+echo $OUTPUT | grep -q "No database devices with low disk space."
+
+RESULT=$?
+
+if [ $RESULT -gt 0 ]; then
+	echo "Warning - Some dataprotector tablespaces are running low"
+	exit 1
+else
+	echo "OK - No database devices with low disk space."
+	exit 0
+fi
+

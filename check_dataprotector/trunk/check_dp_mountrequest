@@ -1,0 +1,24 @@
+#!/bin/sh
+
+
+OUTPUT=$(/opt/omni/bin/omnistat)
+RESULT=$?
+
+echo $OUTPUT | grep -q "No currently running sessions."
+RESULT=$?
+
+if [ $RESULT -eq 0 ]; then
+	echo "OK - No running sessions"
+	exit 0
+fi
+
+echo $OUTPUT | grep -q "Mount Request" 
+RESULT=$?
+
+if [ $RESULT -eq 0 ]; then
+	echo "Warning, Dataprotector has mount requests"
+	exit 1	
+fi
+
+echo -n $OUTPUT
+exit 0

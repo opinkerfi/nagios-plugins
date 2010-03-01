@@ -1,0 +1,40 @@
+#!/bin/sh
+
+POOL="$1"
+WARNING=5
+CRITICAL=2
+
+if [ "$POOL" = "" ]; then
+	echo "Unknown - No Media pool specified"
+	exit 3
+fi
+
+OUTPUT=$(/opt/omni/bin/omnimm -list_pool "$POOL")
+RESULT=$?
+
+if [ $RESULT -eq 3 ]; then
+	echo "Unknown - Media pool '$POOL' was not found"
+	exit 3
+fi
+
+if [ $RESULT -ne 0 ]; then
+	echo "Unknown - exit code from omnimm=$RESULT, output: $OUTPUT"
+	exit 3
+fi
+
+FREE_MEDIA=$(echo "$OUTPUT" | tail -n +4 | wc -l)
+
+PERFDATA="'$POOL'=$FREE_MEDIA"
+
+if [ $FREE_MEDIA -lt $CRITICAL ]; then
+	echo "Critical: $FREE_MEDIA available media in pool $POOL | $PERFDATA"
+	exit 2
+fi
+
+if [ $FREE_MEDIA -lt $WARNING ]; then
+	echo "Warning: $FREE_MEDIA available media in pool $POOL | $PERFDATA"
+	exit 1
+fi
+
+echo "OK: $FREE_MEDIA available media in pool $POOL | $PERFDATA"
+exit 0
