@@ -176,7 +176,7 @@ sub check_sp {
 			# check for Enclosure lines
 			if( $_ =~ m/Enclosure\s(\d+|\w+)\s(\w+)\s$opt_sp\d?\s\w+:\s+(.*)/) {
 				my $check = $2;
-				if ($3 =~ m/Present|Valid|N\/A|255.255/) {
+				if ($3 =~ m/Removed|\d+.\d+|Present|Valid|N\/A|255.255/) {
 					$output .= "$check ok,";
 				} else {
 					$output .= "$check failed,";
