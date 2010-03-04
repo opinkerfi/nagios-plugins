@@ -17,17 +17,16 @@
 
 # crit2warn.sh is a wrapper for Nagios checks that changes the return
 # code for checks from CRITICAL to WARNING
-
 CMD=""
 
 # Quote arguments
-for (( i = 1; i < $# ; i++ )); do
-	eval ARG=\$$i
+while (( "$#" > 0 )); do
+	ARG=$1
+	shift
 	CMD="$CMD $(echo "$ARG" | awk '{gsub(".", "\\\\&");print}')"
 done
 
 # Run command
-eval "echo $CMD >> /tmp/cmd"
 eval "$CMD"
 ret=$?
 
