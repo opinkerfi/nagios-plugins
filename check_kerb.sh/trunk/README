@@ -1,0 +1,10 @@
+check_kerb.sh is a simple way of checking kerberos login using a configured
+kerberos host (/etc/krb5.conf)
+
+Usage: check_kerb.sh <username> <password>
+
+Can use default realm like this:
+	check_kerb.sh tommi mypass
+
+or with realm:
+	check_kerb.sh tommi@OK mypass
