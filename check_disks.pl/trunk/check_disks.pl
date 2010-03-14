@@ -353,11 +353,12 @@ foreach my $f (keys %checkdisks) {
         $output .= "<br>" if ($opt_html);
     } else {
         if ($opt_v) {
-            $output .= "[$f " . byte2human($checkdisks{$f}->{free}) .
-                          " (" . $checkdisks{$f}->{pfree} . '% free)] ';
+            $output .= "\n[$f " . byte2human($checkdisks{$f}->{free}) .
+                          " (" . $checkdisks{$f}->{pfree} . '% free)] ' ;
             $output .= "<br>" if ($opt_html);
         }
     }
+	    $output .= "\n";
     
     # Donnees de Perfs
     my $perfwarn=$alldisks{$f}->{somme}*((100-$checkdisks{$f}->{warning})/100);
