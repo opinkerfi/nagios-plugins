@@ -1,0 +1,171 @@
+#!/usr/bin/perl
+#
+#
+# AUTHORS:
+#	Pall Sigurdsson <palli@ok.is>
+#
+#
+#    This script is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This script is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this script; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+
+use lib qw ( /usr/local/nagios/perl/lib );
+use Net::SNMP;
+use Getopt::Std;
+
+$script         = "check_snmp_description";
+$script_version = "1.0.0";
+
+# SNMP options
+$version = "2c";
+$timeout = 2;
+
+# Oids to use
+$oid_description   = ".1.3.6.1.2.1.1.1.0";
+$oid_uptime        =".1.3.6.1.2.1.1.3.0";	
+$oid_contact	   = ".1.3.6.1.2.1.1.4.0";
+$oid_name	   = ".1.3.6.1.2.1.1.5.0";
+$oid_location      = ".1.3.6.1.2.1.1.6.0";
+
+# Default values
+$description = "";
+$uptime = "";
+$contact = "";
+$name = "";
+$location = "";
+
+
+$hostname = "10.199.7.59";		     # Default hostname
+$returnstring = "";
+$community      = "public";                  # Default community string
+#$configfilepath = "/usr/local/nagios/etc";
+
+# Do we have enough information?
+if ( @ARGV < 1 ) {
+    print "Too few arguments\n";
+    usage();
+}
+
+getopts("hH:C:i:w:c:");
+if ($opt_h) {
+    usage();
+    exit(0);
+}
+if ($opt_H) {
+    $hostname = $opt_H;
+
+    # print "Hostname $opt_H\n";
+}
+else {
+    print "No hostname specified\n";
+    usage();
+    exit(0);
+}
+if ($opt_C) {
+    $community = $opt_C;
+}
+if ($opt_w) {
+    $warning = $opt_w;
+}
+if ($opt_c) {
+    $critical = $opt_c;
+}
+else {
+
+    # print "Using community $community\n";
+}
+
+# Create the SNMP session
+
+$version = "1";
+( $s, $e ) = Net::SNMP->session(
+    -community => $community,
+    -hostname  => $hostname,
+    -version   => $version,
+    -timeout   => $timeout,
+);
+
+if ( !defined( $s->get_request($oid_description) ) ) {
+
+    # If we can't connect using SNMPv1 lets try as SNMPv2
+    $s->close();
+    sleep 0.5;
+    $version = "2c";
+    ( $s, $e ) = Net::SNMP->session(
+        -community => $community,
+        -hostname  => $hostname,
+        -version   => $version,
+        -timeout   => $timeout,
+    );
+    if ( !defined( $s->get_request($oid_sysDescr) ) ) {
+        print "Agent not responding, tried SNMP v1 and v2 (IP=$hostname, Community=$community)\n";
+        exit(1);
+    }
+    else {
+        foreach ( $s->var_bind_names() ) {
+            $description = $s->var_bind_list()->{$_};
+        }
+    }
+
+}
+    else {
+        foreach ( $s->var_bind_names() ) {
+            $description = $s->var_bind_list()->{$_};
+        }
+    }
+# Get Location
+    if ( !defined( $s->get_request($oid_location) ) ) {
+    }
+    else {
+        foreach ( $s->var_bind_names() ) {
+            $location = $s->var_bind_list()->{$_};
+        }
+    }
+
+# Get Contact
+    if ( !defined( $s->get_request($oid_contact) ) ) {
+    }
+    else {
+        foreach ( $s->var_bind_names() ) {
+            $contact = $s->var_bind_list()->{$_};
+        }
+    }
+
+# Get name
+    if ( !defined( $s->get_request($oid_name) ) ) {
+    }
+    else {
+        foreach ( $s->var_bind_names() ) {
+            $name = $s->var_bind_list()->{$_};
+        }
+    }
+
+# Get Uptime
+    if ( !defined( $s->get_request($oid_uptime) ) ) {
+    }
+    else {
+        foreach ( $s->var_bind_names() ) {
+            $uptime = $s->var_bind_list()->{$_};
+        }
+    }
+
+
+if ($uptime ) { print "Uptime is good: " . int($uptime) . "\n"; }
+print "Description: $description \n";
+print "Location: $location \n";
+print "Name: $name \n";
+print "Uptime: $uptime \n";
+print "Contact: $contact \n";
+exit 0;
+
