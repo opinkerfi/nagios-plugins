@@ -230,6 +230,10 @@ foreach my $key  ( keys %$resultat) {
 
     #$index = 1;
     #while ( $index <= $number_of_interfaces ) {
+
+    # Weed out empty entries
+    @keys = grep(!/^$/, @keys);
+
     foreach $index ( @keys ) {
 	my $target_interface_index = $index;
         $oid_temp = $oid_ifdescr . $index;
