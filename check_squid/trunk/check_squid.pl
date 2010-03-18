@@ -22,6 +22,7 @@ use utils qw($TIMEOUT %ERRORS &print_revision &support &usage);
 use LWP::UserAgent;
 use HTTP::Request::Common qw(POST GET);
 use HTTP::Headers;
+use Time::HiRes;
 my ($url, $urluser, $urlpass, $proxy, $proxyport,
      $proxyuser, $proxypass, $expectstatus, $res, $req);
 
@@ -88,13 +89,17 @@ if ($urluser)
         $h->authorization_basic($urluser, $urlpass);
 }
 
+$t0 = [gettimeofday];
+
 $req = HTTP::Request->new('GET', $url, $h);
 
 $res = $ua->request($req);
 
+$elapsed = tv_interval ( $t0 );
+
 if ($res->status_line =~ /^$expectstatus/)
 {
-        print "OK - Status: ".$res->status_line."\n";
+        print "OK - Status: ".$res->status_line. " | 'response'=$elapsed\n";
 		exit $ERRORS{"OK"};
 }
 else
