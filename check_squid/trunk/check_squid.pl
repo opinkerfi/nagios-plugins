@@ -89,13 +89,13 @@ if ($urluser)
         $h->authorization_basic($urluser, $urlpass);
 }
 
-$t0 = [gettimeofday];
+my $t0 = [gettimeofday];
 
 $req = HTTP::Request->new('GET', $url, $h);
 
 $res = $ua->request($req);
 
-$elapsed = tv_interval ( $t0 );
+my $elapsed = tv_interval ( $t0 );
 
 if ($res->status_line =~ /^$expectstatus/)
 {
