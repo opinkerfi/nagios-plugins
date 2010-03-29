@@ -161,7 +161,8 @@ if ( !defined( $s->get_request($oid_description) ) ) {
     }
 
 
-if ($uptime ) { print "Uptime is good: " . int($uptime) . "\n"; }
+#if ($uptime ) { print "Uptime is good: " . int($uptime) . "\n"; }
+print "SNMP Connectivity OK... \n";
 print "Description: $description \n";
 print "Location: $location \n";
 print "Name: $name \n";
