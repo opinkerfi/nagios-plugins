@@ -35,7 +35,7 @@ $timeout = 2;
 $number_of_interfaces   = 0;
 $target_interface_index = 0;
 
-@list_interfaces=undef;				# List of inappropriate interfaces;
+@list_interfaces=();				# List of inappropriate interfaces;
 
 $oid_base	   = ".1.3.6.1.2.1.2.2.1.1.";	
 $oid_sysdescr      = ".1.3.6.1.2.1.1.1.0";
