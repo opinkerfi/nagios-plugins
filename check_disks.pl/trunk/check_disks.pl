@@ -358,7 +358,7 @@ foreach my $f (keys %checkdisks) {
             $output .= "<br>" if ($opt_html);
         }
     }
-	    $output .= "\n";
+	    #$output .= "\n";
     
     # Donnees de Perfs
     my $perfwarn=$alldisks{$f}->{somme}*((100-$checkdisks{$f}->{warning})/100);
