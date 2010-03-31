@@ -7,7 +7,7 @@ use Data::Dumper;
 
 # Create the Nagios plugin object
 my $np = Nagios::Plugin->new(
-        usage => "Usage: %s -H <hostname> -c <snmp_community>",
+        usage => "Usage: %s -H <hostname> -u <username> -p <password> -s <share>",
         version => "0.01",
 );
 
@@ -48,7 +48,42 @@ $np->add_arg(
         required => 0,
 );
 
+$np->add_arg(
+        spec => 'writesize|W=i',
+        help => '-W, --writesize=<megabytes>',
+        required => 0,
+	default => 10
+);
 
+
+my @tmpfiles = ();
+
+sub createtmpfile($) {
+	my $size = shift;
+
+	$size = 10 if (!defined $size);
+
+	$np->nagios_exit(UNKNOWN, "Size for param writesize not numeric") if ($size !~ /^\d+$/);
+	
+	my $tmpfile =  `mktemp check-cifs-XXXXXX -p /tmp`;
+	my $rc = $? >> 8;
+	chomp($tmpfile);
+
+	push @tmpfiles, $tmpfile;
+	if ($rc) {
+		$np->nagios_exit(UNKNOWN, "Unable to run mktemp for temporary file");
+	}
+
+	open TMP, ">$tmpfile" or
+		$np->nagios_exit(UNKNOWN, "Cannot open tempfile for writing: $!");
+
+	for (1..$size) {
+		print TMP "0"x(1024*1024);
+	}
+	close TMP;
+
+	return $tmpfile;
+}
 
 sub testbin($) {
 	my $program = shift;
@@ -59,61 +94,116 @@ sub testbin($) {
 	if ($exit_value != 127) {
 		return 0;
 	} else {
-		print "Could not execute $program\n";
-		exit 2;
+		$np->nagios_exit(UNKNOWN, "Could not execute $program");
 	}
 }
 
-sub usage() {
-	print <<EOUSAGE;
-Usage $0 -H <hostname> -s <share> -u <username> -p <password>
-EOUSAGE
-}
 
 
-
-
+# Check needed binaries
 testbin("smbclient");
 testbin("kinit");
 testbin("kdestroy");
 
 
+# Parse command line operations
 $np->getopts;
+
+
+# Initialize global for kerberos credentials cache
+my $krb5cc = "";
 
 # Login with kerberos
 if ($np->opts->kerberos) {
-	my $tmp = `mktemp check-cifs-XXXXXX --tmpdir=/tmp`;
-	my $rc = $? >> 8;
-	chomp($tmp);
+	# Cache saved to temporary file too avoid clashed with 
+	# other plugins
+	$krb5cc = createtmpfile(0);
 
-	if ($rc) {
-		nagios_exit(UNKNOWN, "Unable to run mktemp for kerberos cache");
-	}
-	my $kcmd = sprintf("echo '%s' | kinit -c %s '%s' 2>&1", $np->opts->password, $tmp, $np->opts->username);
+	# Execute kinit kerberised login
+	my $kcmd = sprintf("echo '%s' | kinit -c %s '%s' 2>&1", $np->opts->password, $krb5cc, $np->opts->username);
 	my $kinit = `$kcmd`;
 	my $exit_value  = $? >> 8;
 
+	# Check return code for failures
 	if ($exit_value != 0) {
 		chomp $kinit;
-		nagios_exit(CRITICAL, "Critical: Unable to log in with kerberos - $kinit\n";
+		$np->nagios_exit(CRITICAL, "Unable to log in with kerberos - $kinit");
 	}
 }
 
+# Array of arguments for smbclient based on various circumstances
 my @smbclient_opts;
 my @smbclient_commands;
 
+# Set servicename
+push @smbclient_opts, sprintf("//%s/%s", $np->opts->hostname, $np->opts->share);
 
+# Kerberised or NTLM ?
 if ($np->opts->kerberos) {
 	push @smbclient_opts, '-k'
 } else {
-	push @smbclient_opts, sprintf("'%s'", $np->opts->username), '-U', "'$np->opts->username'", 
+	push @smbclient_opts, "'" . $np->opts->password . "'", '-U', "'" . $np->opts->username . "'", 
 }
 
-print "smbclient " . join(" ", @smbclient_opts) . "\n";
+
+# We want to test writing a file to the remote share
+if ($np->opts->writefile) {
+	my $tmpfile = createtmpfile($np->opts->writesize);
+	my $cmd = ($krb5cc ? "KRB5CCNAME=$krb5cc " : "") . "smbclient " . join(" ", @smbclient_opts) . " -c 'put $tmpfile " . $np->opts->writefile . "' 2>&1 |";
+	open SMBCLIENT, $cmd or
+		$np->nagios_exit(CRITICAL, "Unable to run CIFS connection: $!");
+
+	# Toss header
+	<SMBCLIENT>;
+
+	my $return = <SMBCLIENT>;
+	chomp($return);
+
+	if ($return =~ /^putting file \S+? as \S+? \((\d+\.\d*) /) {
+		close SMBCLIENT;
+		$np->add_perfdata(
+			label => "file_transfer",
+			value => $1,
+			uom => "KBps" );
+
+		$np->nagios_exit(OK, "Connected and uploaded file at rate of $1" . ($np->opts->kerberos ? " (kerberised)" : ""));
+	} else {
+		close SMBCLIENT;
+		$np->nagios_exit(CRITICAL, "Unable to upload file" . ($np->opts->kerberos ? " (kerberised)" : "") . ": $return");
+	}
+	
+# Just a regular connection test
+} else {
+	my $cmd = ($krb5cc ? "KRB5CCNAME=$krb5cc " : "") . "smbclient " . join(" ", @smbclient_opts) . " -c '' 2>&1 |";
+	open SMBCLIENT, $cmd or
+		$np->nagios_exit(CRITICAL, "Unable to run CIFS connection: $!");
+
+	# Toss header
+	<SMBCLIENT>;
+	my $nterror = <SMBCLIENT>;
+	close SMBCLIENT;
+
+	chomp($nterror) if ($nterror);
+	if ($nterror) {
+		$np->nagios_exit(CRITICAL, "Unable to connect to share" . ($np->opts->kerberos ? " (kerberised)" : "") . ": $nterror");
+	}
+	$np->nagios_exit(OK, "Connected successfully" . ($np->opts->kerberos ? " (kerberised)" : ""));
+}
 
 
-__END__
-	my $kdestroy = `echo $parms{pass} | kdestroy -c $tmp`;
-	$exit_value  = $? >> 8;
-	#print "kdestroy: $kdestroy\nrc: $exit_value\n";
+
+
+# Hack to remove the krb5 credentials file if we have exited
+END {
+	
+	if (@tmpfiles) {
+		foreach my $f (@tmpfiles) {
+			if (-f $f) {
+				unlink $f;
+			}
+		}
+	}
+};
+
+
 
