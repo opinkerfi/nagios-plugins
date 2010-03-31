@@ -1,12 +1,53 @@
 #!/usr/bin/perl -w
 
 use strict;
-use Getopt::Long;
-use File::MkTemp qw(mktemp);
+use Nagios::Plugin;
 use Data::Dumper;
 
-Getopt::Long::Configure ("posix_default", "no_ignore_case");
-my %parms;
+
+# Create the Nagios plugin object
+my $np = Nagios::Plugin->new(
+        usage => "Usage: %s -H <hostname> -c <snmp_community>",
+        version => "0.01",
+);
+
+# Add valid arguments
+$np->add_arg(
+        spec => 'hostname|H=s',
+        help => '-H, --hostname=<hostname>',
+        required => 1,
+);
+
+$np->add_arg(
+        spec => 'username|u=s',
+        help => '-u, --username=<username>',
+        required => 1,
+);
+
+$np->add_arg(
+        spec => 'password|p=s',
+        help => '-p, --password=<password>',
+        required => 1,
+);
+
+$np->add_arg(
+        spec => 'share|s=s',
+        help => '-s, --share=<password>',
+        required => 1,
+);
+
+$np->add_arg(
+        spec => 'kerberos|k',
+        help => '-k, --kerberos',
+        required => 0,
+);
+
+$np->add_arg(
+        spec => 'writefile|w=s',
+        help => '-w, --writefile=<filepath>',
+        required => 0,
+);
+
 
 
 sub testbin($) {
@@ -29,72 +70,46 @@ Usage $0 -H <hostname> -s <share> -u <username> -p <password>
 EOUSAGE
 }
 
-sub help() {
-	print <<EOUSAGE;
-Usage $0 -H <hostname> -s <share> -u <username> -p <password>
-
-	--host,		-H		Hostname
-	--share,	-s		Share
-	--user,		-u		Username
-	--pass,		-p		Password
-	--kerberos,	-k		Enable Kerberos login
-	--writefile,	-w		Tries to write to a file on the share
-	--readfile,	-r		Tries to read the specified file
-EOUSAGE
-	#exit 0;
-}
-
-my $result = GetOptions (
-	"help|h" => \$parms{help},
-	"user|u=s" => \$parms{user},
-	"pass|p=s" => \$parms{pass},
-	"kerberos|k" => \$parms{kerberos},
-	"debug|d" => \$parms{debug},
-	"verbose|v"  => \$parms{verbose},
-	"writefile=s"  => \$parms{writefile},
-	"hostname|H=s"  => \$parms{hostname},
-	"share|s=s"  => \$parms{share});
 
 
-print Dumper(\%parms) . "\n" if ($parms{debug});
 
-if ($parms{help}) {
-	help();
-}
-
-if (!$parms{user} or !$parms{pass} or !$parms{hostname} or !$parms{share}) {
-	usage();
-	exit 2;
-}
-
-
-my $tmp = mktemp("check-cifs-XXXXXX", "/tmp");
 testbin("smbclient");
 testbin("kinit");
 testbin("kdestroy");
 
 
+$np->getopts;
+
 # Login with kerberos
-if ($parms{kerberos}) {
-	my $kinit = `echo $parms{pass} | kinit -c $tmp $parms{user} 2>&1`;
+if ($np->opts->kerberos) {
+	my $tmp = `mktemp check-cifs-XXXXXX --tmpdir=/tmp`;
+	my $rc = $? >> 8;
+	chomp($tmp);
+
+	if ($rc) {
+		nagios_exit(UNKNOWN, "Unable to run mktemp for kerberos cache");
+	}
+	my $kcmd = sprintf("echo '%s' | kinit -c %s '%s' 2>&1", $np->opts->password, $tmp, $np->opts->username);
+	my $kinit = `$kcmd`;
 	my $exit_value  = $? >> 8;
 
 	if ($exit_value != 0) {
 		chomp $kinit;
-		print "Critical: Unable to log in with kerberos - $kinit\n";
-		exit 2;
+		nagios_exit(CRITICAL, "Critical: Unable to log in with kerberos - $kinit\n";
 	}
 }
 
 my @smbclient_opts;
 my @smbclient_commands;
 
-if ($parms{kerberos}) {
+
+if ($np->opts->kerberos) {
 	push @smbclient_opts, '-k'
 } else {
-	push @smbclient_opts, "'$parms{pass}'", '-U', "'$parms{user}'", 
+	push @smbclient_opts, sprintf("'%s'", $np->opts->username), '-U', "'$np->opts->username'", 
 }
 
+print "smbclient " . join(" ", @smbclient_opts) . "\n";
 
 
 __END__
