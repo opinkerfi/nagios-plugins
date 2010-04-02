@@ -1,24 +1,39 @@
 #!/bin/sh
 
+TEMPFILE=`mktemp`
+omnistat=/opt/omni/bin/omnistat
 
-OUTPUT=$(/opt/omni/bin/omnistat)
+if [ ! -x $omnistat ]; then
+	echo "UNKNOWN - Cant find $omnistat"
+	exit 3
+fi
+
+$omnistat > $TEMPFILE
 RESULT=$?
 
-echo $OUTPUT | grep -q "No currently running sessions."
+
+# Collect some performance data
+RUNNING_SESSIONS=`grep ^2 $TEMPFILE | wc -l`
+QUEUED_SESSIONS=`grep Queuing $TEMPFILE | wc -l`
+MOUNT_REQUESTS=`grep Mount $TEMPFILE | wc -l`
+PERFDATA="'active sessions'=$RUNNING_SESSIONS 'queued'=$QUEUED_SESSIONS 'mount requests'=$MOUNT_REQUESTS"
+
+grep -q "No currently running sessions." $TEMPFILE
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then
-	echo "OK - No running sessions"
+	echo "OK - No running sessions | $PERFDATA"
 	exit 0
 fi
 
-echo $OUTPUT | grep -q "Mount Request" 
+grep -q "Mount" $TEMPFILE
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then
-	echo "Warning, Dataprotector has mount requests"
+	echo "Warning, $MOUNT_REQUESTS mount requests. $RUNNING_SESSIONS active sessions. $QUEUED_SESSIONS queued. | $PERFDATA"
 	exit 1	
 fi
 
-echo -n $OUTPUT
+#cat $TEMPFILE
+echo "OK - $MOUNT_REQUESTS mount requests. $RUNNING_SESSIONS active sessions. $QUEUED_SESSIONS queued. | $PERFDATA"
 exit 0
