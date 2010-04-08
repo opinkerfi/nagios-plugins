@@ -22,7 +22,7 @@ use utils qw($TIMEOUT %ERRORS &print_revision &support &usage);
 use LWP::UserAgent;
 use HTTP::Request::Common qw(POST GET);
 use HTTP::Headers;
-use Time::HiRes;
+use Time::HiRes qw(gettimeofday tv_interval);
 my ($url, $urluser, $urlpass, $proxy, $proxyport,
      $proxyuser, $proxypass, $expectstatus, $res, $req);
 
@@ -99,7 +99,7 @@ my $elapsed = tv_interval ( $t0 );
 
 if ($res->status_line =~ /^$expectstatus/)
 {
-        print "OK - Status: ".$res->status_line. " | 'response'=$elapsed\n";
+        printf( "OK - Status: %s | 'response_time'=%ss\n", $res->status_line, $elapsed);
 		exit $ERRORS{"OK"};
 }
 else
