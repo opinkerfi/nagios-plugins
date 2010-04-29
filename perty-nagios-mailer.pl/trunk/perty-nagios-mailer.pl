@@ -23,12 +23,12 @@ use MIME::Entity;
 use MIME::Base64;
 
 # Some defaults
-my $pnp4nagios_perfdata = '/nagios/share/perfdata';
-my $pnp4nagios_phpdir = '/nagios/share';
-my $nagios_cgiurl = "http://slxnagios1/nagios/cgi-bin";
-my $pnp4nagios_url = "http://slxnagios1/nagios/pnp4nagios.php";
-my $from_address = 'nagios@lsh.is';
-my $logo = '/nagios/share/images/sblogo.jpg';
+my $pnp4nagios_perfdata = '/var/lib/pnp4nagios/perfdata';
+my $pnp4nagios_phpdir = '/usr/share/nagios/html/pnp4nagios';
+my $nagios_cgiurl = "http://nagios/nagios/cgi-bin";
+my $pnp4nagios_url = "http://nagios/nagios/pnp4nagios/";
+my $from_address = 'nagios@opensource.is';
+my $logo = '/usr/share/nagios/images/sblogo.png';
 
 if (@ARGV != 8) {
 	usage();
@@ -39,7 +39,7 @@ my ($recipient, $date, $type, $host, $ip, $service, $state, $message) = @ARGV;
 my $rrd = '';
 if (-f "$pnp4nagios_perfdata/$host/$service.rrd") {
 	my $t = time();
-	$rrd = `( cd $pnp4nagios_phpdir;php -r 'parse_str("host=$host&srv=$service&source=1&view=0&end=$t&display=image", \$_GET); include_once("pnp4nagios.php");' )`;
+	$rrd = `( cd $pnp4nagios_phpdir;php -r 'parse_str("host=$host&srv=$service&source=1&view=0&end=$t&display=image", \$_GET); include_once("index.php");' )`;
 }
 
 my $head = MIME::Entity->build(
@@ -113,7 +113,7 @@ my $html_content = MIME::Entity->build(
 } . ($rrd ? qq{
   <tr>
     <td style="background: white" colspan="2">
-      <a href="$pnp4nagios_url?host=$host&srv=$service"><img border=0 src="cid:pnp.gif"></a>
+      <a href="$pnp4nagios_url?host=$host&srv=$service"><img border=0 src="cid:pnp.png"></a>
     </td>
   </tr>
 } : "") . qq{
@@ -124,8 +124,8 @@ my $html_content = MIME::Entity->build(
 
 my $rrdimage = MIME::Entity->build(
 	Data		=> $rrd,
-	Type		=> 'image/gif',
-	Id		=> '<pnp.gif>',
+	Type		=> 'image/png',
+	Id		=> '<pnp.png>',
 	Encoding	=> 'base64'
 ) if ($rrd);
 $alt->add_part($txt_content);
