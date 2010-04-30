@@ -26,7 +26,6 @@ use Getopt::Std;
 
 $script         = "check_snmp_description";
 $script_version = "1.0.0";
-
 # SNMP options
 $version = "2c";
 $timeout = 2;
@@ -160,13 +159,11 @@ if ( !defined( $s->get_request($oid_description) ) ) {
         }
     }
 
-
-#if ($uptime ) { print "Uptime is good: " . int($uptime) . "\n"; }
-print "SNMP Connectivity OK... \n";
-print "Description: $description \n";
-print "Location: $location \n";
+print "OK - SNMP is working properly \n\n";
 print "Name: $name \n";
-print "Uptime: $uptime \n";
 print "Contact: $contact \n";
+print "Location: $location \n";
+print "Description: $description \n";
+print "Uptime: $uptime \n";
 exit 0;
 
