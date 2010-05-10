@@ -28,13 +28,18 @@ my $pnp4nagios_phpdir = '/usr/share/nagios/html/pnp4nagios';
 my $nagios_cgiurl = "http://nagios/nagios/cgi-bin";
 my $pnp4nagios_url = "http://nagios/nagios/pnp4nagios/";
 my $from_address = 'nagios@opensource.is';
-my $logo = '/usr/share/nagios/images/sblogo.png';
+my $logo = '/usr/share/nagios/html/images/sblogo.png';
 
 if (@ARGV != 8) {
 	usage();
 }
 
 my ($recipient, $date, $type, $host, $ip, $service, $state, $message) = @ARGV;
+
+my %nagioscmd = (
+	service_downtime => 56,
+	service_ack => 34,
+);
 
 my $rrd = '';
 if (-f "$pnp4nagios_perfdata/$host/$service.rrd") {
@@ -68,10 +73,26 @@ EO
 );
 
 my $state_color = '#33FF00';
+
 if ($state eq 'WARNING') {
 	$state_color = '#FFFF00';
 } elsif ($state eq 'CRITICAL') {
 	$state_color = '#F83838';
+}
+
+
+my $ack = '';
+if ($state ne 'OK') {
+	my $ackurl = sprintf("%s/cmd.cgi?host=%s&service=%s",
+		$nagios_cgiurl,
+		$host,
+		$service);
+	$ack = qq{
+  <tr>
+    <td colspan="1" style="background: black;color: white;font-weight: bold">Service Actions</td>
+    <td colspan="1" style="background: white;color: black"><a class="cmd" href="$ackurl?cmd_typ=$nagioscmd{service_ack}">Acknowledge</a> <a class="cmd" href="$ackurl?cmd_typ=$nagioscmd{service_downtime}">Schedule Downtime</a></td>
+  </tr>
+};
 }
 
 my $html_content = MIME::Entity->build(
@@ -79,33 +100,58 @@ my $html_content = MIME::Entity->build(
 	Charset		=> 'UTF-8',
 	Encoding	=> 'quoted-printable',
 	Data		=> qq{
+<head>
+<style type="text/css">
+th {
+	background: black;
+	color: white;
+	font-weight: bold;
+	text-align: left;
+	width: 220px;
+}
+a {
+	text-decoration: underline;
+	font-weight: bold;
+	font-size: 90%;
+	color: black;
+}
+a.cmd {
+	padding: 2px;
+	margin: 5px 5px 5px 0px;
+	border: solid 1px black;
+	background: #eee;
+	float: right;
+}
+</style>
+</head>
 <body>
 <table style="background: #ddd;width: 604px">
   <tr>
-    <td colspan="2" style="background: black;align: center"><img src="cid:sblogo.png"></td>
+    <th colspan="2"><img src="cid:sblogo.png"></td>
   </tr>
   <tr>
-    <td style="background: black;color: white;font-weight: bold;width: 150px">Host</td>
+    <th>Host</td>
     <td style="background: white;color: black"><a style="color: black;text-decoration: underline" href="$nagios_cgiurl/extinfo.cgi?type=1&host=$host">$host ($ip)</a></td>
   </tr>
   <tr>
-    <td style="background: black;color: white;font-weight: bold">Service</td>
+    <th>Service</td>
     <td style="background: white;color: black"><a style="color: black;text-decoration: underline" href="$nagios_cgiurl/extinfo.cgi?type=2&host=$host&service=$service">$service</a></td>
   </tr>
   <tr>
-    <td style="background: black;color: white;font-weight: bold">State</td>
+    <th>State</td>
     <td style="background: $state_color;color: black;font-weight: bold">$state</td>
   </tr>
   <tr>
-    <td style="background: black;color: white;font-weight: bold">Date</td>
+    <th>Date</td>
     <td style="background: white;color: black">$date</td>
   </tr>
   <tr>
-    <td style="background: black;color: white;font-weight: bold">Type</td>
+    <th>Type</td>
     <td style="background: white;color: black">$type</td>
   </tr>
+$ack
   <tr>
-    <td style="background: black;color: white;font-weight: bold" colspan="2">Description</td>
+    <th colspan="2">Description</td>
   </tr>
   <tr>
     <td colspan="2" style="background: white;color: black">$message</td>
