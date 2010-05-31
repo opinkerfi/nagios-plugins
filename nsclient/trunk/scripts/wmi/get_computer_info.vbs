@@ -281,6 +281,7 @@ strInfo=""
 		Dim objWMIService, colWMI,objWMI
 		strResultTemp = ""
 		strOut = ""
+		strPerfdata = ""
 		Set objWMIService = GetObject("winmgmts:\\" & strComputer & "\" & strNameSpace)
 		f_Error()
 		'Depend on strInfo parameters to get the result value
@@ -315,16 +316,18 @@ strInfo=""
 			Set colWMI = objWMIService.ExecQuery("Select * from Win32_PerfRawData_Tcpip_NetworkInterface")
 			for Each objWMI In colWMI
 				strOut = strOut & objWMI.Name & ", "
+			 	strPerfdata = strPerfdata & "'net_sent_" & objWMI.Name & "'=" & objWMI.BytesSentPerSec & " " & "'net_recv_" & objWMI.Name & "'=" & objWMI.BytesReceivedPerSec & " "
 			next
-			strResultTemp = "; Network Interfaces: " & strOut
+			strResultTemp = "; Network Interfaces: " & strOut & "  |  " & strPerfdata
 			Exit Function
 		else 
 			if(info = "logical_disks") then
-				Set colWMI = objWMIService.ExecQuery("Select * from Win32_LogicalDisk")
+				Set colWMI = objWMIService.ExecQuery("Select * from Win32_PerfRawData_PerfDisk_LogicalDisk")
 				for Each objWMI In colWMI
 					strOut = strOut & objWMI.Name & ", "
+				 	strPerfdata = strPerfdata & "'disk_read_" & objWMI.Name & "'=" & objWMI.DiskReadBytesPerSec & " " & "'disk_write_" & objWMI.Name & "'=" & objWMI.DiskWriteBytesPerSec & " " & "'disk_queue_" & objWMI.Name & "'=" & objWMI.CurrentDiskQueueLength & " " 
 				next
-				strResultTemp = "; Logical Disks: " & strOut
+				strResultTemp = "; Logical Disks: " & strOut & "  |  " & strPerfdata
 				Exit Function
 			else 
 				if(info = "installed_services") then
