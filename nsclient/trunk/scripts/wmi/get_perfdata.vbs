@@ -325,7 +325,7 @@ strInfo=""
 				Set colWMI = objWMIService.ExecQuery("Select * from Win32_PerfRawData_PerfDisk_LogicalDisk")
 				for Each objWMI In colWMI
 					strOut = strOut & objWMI.Name & ", "
-				 	strPerfdata = strPerfdata & "'disk_read_" & objWMI.Name & "'=" & objWMI.DiskReadBytesPerSec & " " & "'disk_write_" & objWMI.Name & "'=" & objWMI.DiskWriteBytesPerSec & " "
+				 	strPerfdata = strPerfdata & "'disk_read_" & objWMI.Name & "'=" & objWMI.DiskReadBytesPerSec & " " & "'disk_write_" & objWMI.Name & "'=" & objWMI.DiskWriteBytesPerSec & " " & "'disk_queue_" & objWMI.Name & "'=" & objWMI.CurrentDiskQueueLength & " " 
 				next
 				strResultTemp = "; Logical Disks: " & strOut & "  |  " & strPerfdata
 				Exit Function
