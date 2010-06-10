@@ -2,31 +2,35 @@
 #
 #
 # AUTHORS:
-#	Copyright (C) 2003-2010 Opsera Limited. All rights reserved
+#	Based on check_snmp_cisco_ifs by Opsera Limited.
+#	Author: Pall Sigurdsson <palli 'at' opensource.is>
 #
-#    This file is part of Opsview
-#
-#    Opsview is free software; you can redistribute it and/or modify
+#    This software is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
 #
-#    Opsview is distributed in the hope that it will be useful,
+#    This software is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with Opsview; if not, write to the Free Software
+#    along with this software; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+# ChangeLog
+# 2010-06-10:
+#	Modified to include -B option for Brocade SAN switches
+# 2010-02-05:
+#	Initial Release
 use lib qw ( /usr/local/nagios/perl/lib );
 use Net::SNMP;
 use Getopt::Std;
 
-$script         = "check_snmp_cisco_ifstatus";
-$script_version = "2.1.0";
+$script         = "check_snmp_interfaces";
+$script_version = "1.1";
 
 # SNMP options
 $version = "2c";
@@ -52,6 +56,7 @@ $oid_ifinerrors    = ".1.3.6.1.2.1.2.2.1.14.";    # need to append integer for s
 $oid_ifouterrors   = ".1.3.6.1.2.1.2.2.1.20.";    # need to append integer for specific interface
 $oid_ifoutqlen     = ".1.3.6.1.2.1.2.2.1.21.";    # need to append integer for specific interface
 my $realbitssec;                                  # Perf data is always in bps, save this data here
+$longServiceOutput = ();
 
 # Cisco Specific
 
@@ -71,8 +76,58 @@ $ifouterrors   = "n/a";
 $ifoutqlen     = "n/a";
 $ifoutbitssec  = "n/a";
 
-$warning  = 100000000;    # Warning threshold
-$critical = 100000000;    # Critical threshold
+
+#   swFCPortPhyState      OBJECT-TYPE
+#        SYNTAX          INTEGER {
+#                          noCard        (1),
+#                          noTransceiver (2),
+#                          laserFault    (3),
+#                          noLight       (4),
+#                          noSync        (5),
+#                          inSync        (6),
+#                          portFault     (7),
+#                          diagFault     (8),
+#                          lockRef       (9)
+#                        }
+%phyState = ();
+$phyState{1} = "noCard";
+$phyState{2} = "noTransceiver";
+$phyState{3} = "laserFault";
+$phyState{4} = "noLight";
+$phyState{5} = "noSync";
+$phyState{6} = "inSync";
+$phyState{7} = "portFault";
+$phyState{8} = "diagFault";
+$phyState{9} = "lockRef";
+
+#  swFCPortLinkState     OBJECT-TYPE
+#        SYNTAX          INTEGER {
+#                          enabled       (1),
+#                          disabled      (2),
+#                          loopback      (3)
+#                        }
+%linkState = ();
+$linkState{1} = "enabled";
+$linkState{2} = "disabled";
+$linkState{3} = "loopback";
+
+%admState = ();
+$admState{1} = "online";
+$admState{2} = "offline";
+$admState{3} = "testing";
+$admState{4} = "faulty";
+
+%opState = ();
+$opState{0} = "unknown";
+$opState{1} = "online";
+$opState{2} = "offline";
+$opState{3} = "testing";
+$opState{4} = "faulty";
+
+
+
+#$warning  = 100000000;    # Warning threshold
+#$critical = 100000000;    # Critical threshold
 
 $hostname = "192.168.10.21";
 
@@ -80,7 +135,6 @@ $hostname = "192.168.10.21";
 $returnstring = "";
 
 $community      = "public";                  # Default community string
-$configfilepath = "/usr/local/nagios/etc";
 
 # Do we have enough information?
 if ( @ARGV < 1 ) {
@@ -88,7 +142,7 @@ if ( @ARGV < 1 ) {
     usage();
 }
 
-getopts("hH:C:i:w:c:");
+getopts("hH:C:BdlE:");
 if ($opt_h) {
     usage();
     exit(0);
@@ -96,18 +150,37 @@ if ($opt_h) {
 if ($opt_H) {
     $hostname = $opt_H;
 
-    # print "Hostname $opt_H\n";
+    #print "Hostname $opt_H\n";
 }
+
 else {
     print "No hostname specified\n";
     usage();
     exit(0);
 }
+
+# -B is for brocade defice
+if ($opt_B) {
+        $oid_PhyState           = ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.3.";
+        $oid_OpStatus           = ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.4.";
+        $oid_AdmStatus          = ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.5.";
+        $oid_LinkState          = ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.6.";
+	$oid_PortName		= ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.36.";
+	$oid_PortSpecifier	= ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.37.";
+	
+
+        $oid_base               = ".1.3.6.1.4.1.1588.2.1.1.1.6.2.1.1.";
+        $oid_ifadminstatus      = $oid_LinkState;     # need to append integer for specific interface
+        $oid_ifoperstatus       = $oid_OpStatus ;     # need to append integer for specific interface
+	$oid_ifdescr		= $oid_PortSpecifier;
+}
+
 if ($opt_C) {
     $community = $opt_C;
 }
-if ($opt_i) {
-    $target_interface = $opt_i;
+$exclude_interface = "bull";
+if ($opt_E) {
+    $exclude_interface = $opt_E;
 }
 if ($opt_w) {
     $warning = $opt_w;
@@ -150,44 +223,40 @@ if ( !defined( $s->get_request($oid_sysDescr) ) ) {
     }
 }
 
-if ( find_match() == 0 ) {
-    probe_interface();
-}
-else {
-    $status = 2;
-    print "Interface $target_interface not found on device $hostname\n";
-    exit $status;
-}
+$status = check_interfaces();
+
+
 
 # Close the session
 $s->close();
 
 if ( $status == 0 ) {
-    print "Status is OK - $returnstring\n";
+    print "OK - $returnstring\n";
     exit $status;
 }
 elsif ( $status == 1 ) {
-    print "Status is a Warning Level - $returnstring\n";
+    print "Warning - $returnstring\n";
     exit $status;
 }
 elsif ( $status == 2 ) {
-    print "Status is CRITICAL - $returnstring\n";
+    print "CRITICAL - $returnstring\n";
     exit $status;
 }
 else {
-    print "Plugin error! SNMP status unknown\n";
+    print "Plugin error! SNMP status unknown $returnstring\n";
     exit $status;
 }
 
-exit 2;
+exit 3;
 
 #################################################
 # Finds match for supplied interface name
 #################################################
 
-sub find_match {
+sub check_interfaces {
 	
 my $resultat = $s->get_table($oid_base);
+#print $oid_base;
 
 if (!defined($resultat)) {
    printf("ERROR: NHR table : %s.\n", $s->error);
@@ -214,6 +283,7 @@ foreach my $key  ( keys %$resultat) {
             print "Status is a Warning Level - SNMP agent not responding\n";
             exit 1;
         }
+
         else {
             print "Status is a Warning Level - SNMP OID does not exist\n";
             exit 1;
@@ -233,6 +303,7 @@ foreach my $key  ( keys %$resultat) {
 
     # Weed out empty entries
     @keys = grep(!/^$/, @keys);
+    #@keys = sort(@keys);
 
     foreach $index ( @keys ) {
 	my $target_interface_index = $index;
@@ -242,8 +313,9 @@ foreach my $key  ( keys %$resultat) {
         else {
             foreach ( $s->var_bind_names() ) {
                 $temp_interface_descr = $s->var_bind_list()->{$_};
+		$temp_interface_descr = sprintf("%02d", $temp_interface_descr) if $opt_B;
             }
-		next if ($temp_interface_descr !~ m/$target_interface/);
+		next if ($temp_interface_descr =~ m/$exclude_interface/);
             if ( lc($temp_interface_descr) eq lc($target_interface) ) {
                 $target_interface_index = $index;
             }
@@ -268,8 +340,16 @@ foreach my $key  ( keys %$resultat) {
             $ifoperstatus = $s->var_bind_list()->{$_};
         }
     }
+	$temp = "port $temp_interface_descr is  $opState{$ifoperstatus} ($ifoperstatus) / $linkState{$ifadminstatus} ($ifadminstatus) \n";
+	push(@longServiceOutput, $temp);
+    if ($opt_d) {
+    	print ": $temp_interface_descr:  $opState{$ifoperstatus} ($ifoperstatus) / $linkState{$ifadminstatus} ($ifadminstatus) \n";
+    }
     ############################
     if ( $ifoperstatus != $ifadminstatus ) {
+	if ($opt_B && $ifadminstatus == 2) {
+		next;
+	}
 	push(@list_interfaces, $temp_interface_descr);
 	#print ": $temp_interface_descr: $ifoperstatus / $ifadminstatus \n";
     }
@@ -278,219 +358,36 @@ foreach my $key  ( keys %$resultat) {
 
     #    $index++;
     }
+
+    # Edit The return message and exit to main.
+    $returnmessage = "";
+    $returncode = 3;
+    sort(@list_interfaces);
     my $list_interfaces = @list_interfaces;
     my $keys = @keys;
     if ($list_interfaces > 0) {
-	print "$list_interfaces out of $keys in inappropriate state: @list_interfaces \n";
-	exit 1
-	}
-    else {
-	print "All $keys interfaces in appropriate state\n";
-	exit 0
-    }
-    print "@list_interfaces \n";
-    if ( $target_interface_index == 0 ) {
-        return 1;
+	append("$list_interfaces out of $keys in inappropriate state: @list_interfaces\n");
+	$returncode=1;
     }
     else {
-        return 0;
-    }
-}
-
-####################################################################
-# Gathers data about target interface                              #
-####################################################################
-
-sub probe_interface {
-
-    $oid_temp = $oid_ifdescr . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifdescr = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_iftype . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $iftype = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifmtu . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifmtu = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifspeed . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifspeed = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifadminstatus . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifadminstatus = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifoperstatus . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifoperstatus = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_iflastchange . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $iflastchange = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifinerrors . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifinerrors = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifouterrors . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifouterrors = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_ifoutqlen . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifoutqlen = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $oid_temp = $oid_locIfOutBitsSec . $target_interface_index;
-    if ( !defined( $s->get_request($oid_temp) ) ) {
-        $ifoutbitssec = -1;
-    }
-    else {
-        foreach ( $s->var_bind_names() ) {
-            $ifoutbitssec = $s->var_bind_list()->{$_};
-        }
-    }
-    ############################
-
-    $errorstring = "";
-
-    # Sets warning / critical levels if interface down
-
-    if ( $ifadminstatus eq "1" ) {
-    }
-    else {
-        $status      = 1;
-        $errorstring = "INTERFACE ADMINISTRATIVELY DOWN:";
+    	append("All $keys interfaces in appropriate state\n");
+        $returncode=0;
     }
 
-    if ( $ifoperstatus eq "1" ) {
-    }
-    else {
-        $status      = 2;
-        $errorstring = "INTERFACE DOWN:";
-    }
 
-    # Sets warning / critical levels if ifoutbitssec exceeds threshold
+    # If -l was requested, sort the interface list before returning.
+    if ($opt_l) {
+         $longOutput = "";
+         @longServiceOutput = sort(@longServiceOutput);
+         foreach (@longServiceOutput) {
+           append($_) ;
+         }
+   }
 
-    if ( $status < 1 ) {
 
-        # Don't bother is status is down
-        if ( $ifoutbitssec > $critical ) {
-            $errorstring = "HIGH THROUGHPUT:";
-            $status      = 2;
-        }
-        elsif ( $ifoutbitssec > $warning ) {
-            $errorstring = "HIGH THROUGHPUT:";
-            $status      = 1;
-        }
-    }
 
-    # Mangles interface speed
-
-    my $mbps = $ifspeed / 1000000;
-    if ( $mbps < 1 ) {
-        $ifspeed = $ifspeed / 1000;
-        $ifspeed = "$ifspeed Kbps";
-    }
-    else {
-        $ifspeed = "$mbps Mbps";
-    }
-
-    $realbitssec = $ifoutbitssec;
-
-    # Mangles IfOutBitsSec stat to bits / kbits
-    if ( $ifoutbitssec > 0 ) {
-        my $mbps = $ifoutbitssec / 1000000;
-        if ( $mbps < 1 ) {
-            $ifoutbitssec = $ifoutbitssec / 1000;
-            $ifoutbitssec = "$ifoutbitssec Kbps";
-        }
-        else {
-            $ifoutbitssec = "$mbps Mbps";
-        }
-    }
-    elsif ( $ifoutbitssec < 0 ) {
-        $ifoutbitssec = "N/A";
-    }
-    else {
-        $ifoutbitssec = "0 bps";
-    }
-
-    # Returns string relating to interface media
-    my $iftype_string = return_interfacetype($iftype);
-
-    if ( $status == 0 ) {
-        $temp = sprintf "$ifdescr ($iftype_string) - Current: $ifoutbitssec, Limit: $ifspeed, MTU: $ifmtu, Last change: $iflastchange, STATS:(in errors: $ifinerrors, out errors: $ifouterrors, queue length: $ifoutqlen)";
-        append($temp);
-    }
-    else {
-        $temp = sprintf "$errorstring $ifdescr ($iftype_string) - Current: $ifoutbitssec, Limit: $ifspeed, MTU: $ifmtu, Last change: $iflastchange, STATS:(in errors: $ifinerrors, out errors: $ifouterrors, queue length: $ifoutqlen)";
-        append($temp);
-    }
-    $perfinfo = sprintf "|bits/sec=$realbitssec";
-    append($perfinfo);
+    return $returncode;
+  	
 }
 
 ####################################################################
@@ -502,19 +399,18 @@ sub usage {
 --------------------------------------------------------------------
 $script v$script_version
 
-Monitors status of specific Ethernet interface. 
+Monitors status of all interfaces via SNMP 
 
 Usage: $script -H <hostname> -c <community> [...]
 
 Options: -H 	Hostname or IP address
          -C 	Community (default is public)
-	 -i 	Target interface name 
-		Eg: Serial0/0, FastEthernet0/12
-	 -w	Warning threshold - Out bits / sec
-	 -c	Critical threshold - Out bits / sec
+	 -B     To use MIB designed for Brocade San switches
+	 -d 	Debug
+	 -l 	Detailed Output (Long service output)
 
 --------------------------------------------------------------------	 
-Copyright (C) 2003-2010 Opsera Limited. All rights reserved	 
+Copyright (C) 2003-2010 Pall Sigurdsson <palli 'at' opensource.is>
 	 
 This program is free software; you can redistribute it or modify
 it under the terms of the GNU General Public License
@@ -781,3 +677,4 @@ sub return_interfacetype {
     return ($returnstring);
 
 }
+
