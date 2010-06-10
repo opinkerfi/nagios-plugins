@@ -1,4 +1,4 @@
-' Copyright 2007 GroundWork Open Source Inc.
+' Copyright 2010 Opin Kerfi ehf ok.is.
 '
 ' This program is free software; you can redistribute it and/or
 ' modify it under the terms of the GNU General Public License
@@ -11,7 +11,7 @@
 ' GNU General Public License for more details.
 '
 '
-' Author Dr. Pall Sigurdsson <palli at opensource.is>
+' Author Pall Sigurdsson <palli at opensource.is>
 
 '*************************************************************************************************
 strComputer = "."
