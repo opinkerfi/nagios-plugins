@@ -21,15 +21,18 @@ PERFDATA="'active sessions'=$RUNNING_SESSIONS 'queued'=$QUEUED_SESSIONS 'mount r
 grep -q "No currently running sessions." $TEMPFILE
 RESULT=$?
 
+grep -q "Mount" $TEMPFILE
+MOUNTREQUESTS=$?
+
+rm -f $TEMPFILE
+
 if [ $RESULT -eq 0 ]; then
 	echo "OK - No running sessions | $PERFDATA"
 	exit 0
 fi
 
-grep -q "Mount" $TEMPFILE
-RESULT=$?
 
-if [ $RESULT -eq 0 ]; then
+if [ $MOUNTREQUESTS -eq 0 ]; then
 	echo "Warning, $MOUNT_REQUESTS mount requests. $RUNNING_SESSIONS active sessions. $QUEUED_SESSIONS queued. | $PERFDATA"
 	exit 1	
 fi
