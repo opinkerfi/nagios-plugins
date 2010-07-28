@@ -43,6 +43,9 @@ STATE_CRITICAL=2
 STATE_UNKNOWN=3
 STATE_DEPENDENT=4
 
+
+TEMPFILE=`mktemp`
+
 print_usage() {
         echo ""
         echo "Usage: $PROGNAME -s <slot-number>"
@@ -76,43 +79,39 @@ fi
 
 check_raid()
 {
-        raid_ok=`echo $check|grep -i ok|wc -l`
-        raid_warning=`echo $check|grep -i rebuild|wc -l`
-        raid_critical_1=`echo $check|grep -i failed|wc -l`
-        raid_critical_2=`echo $check|grep -i recovery|wc -l`
+        raid_ok=`cat $TEMPFILE |grep -i ok|wc -l`
+        raid_warning=`cat $TEMPFILE|grep -i -E  'rebuild|predictive' |wc -l`
+        raid_critical_1=`cat $TEMPFILE|grep -i 'failed|recovery' | wc -l`
 
-        err_check=`expr $raid_ok + $raid_warning + $raid_critical_1 + $raid_critical_2`
+        err_check=`expr $raid_ok + $raid_warning + $raid_critical_1 `
 
         if [ $err_check -eq "0" ]; then
-                checkm=`echo $check|sed -e '/^$/ d'`
+                checkm=`cat $TEMPFILE|sed -e '/^$/ d'`
                 echo "$PROGNAME Error. $checkm"
                 exit 2
         fi
 
         if [ $raid_ok -ge "1" ]; then
                 exit_status=$STATE_OK
-        elif [ $raid_warning -ge "1" ]; then
+	fi
+        if [ $raid_warning -ge "1" ]; then
                 exit_status=$STATE_WARNING
-        elif [ $raid_critical_1 -ge "1" ]; then
+	fi
+        if [ $raid_critical_1 -ge "1" ]; then
                 exit_status=$STATE_CRITICAL
-        elif [ $raid_critical_2 -ge "1" ]; then
-                exit_status=$STATE_CRITICAL
-        fi
+	fi
 
         if [ $exit_status -eq "0" ]; then
-                msg_ok=`echo $check|grep -i ok`
-                echo "RAID OK - ($msg_ok)"
-                exit $exit_status
+                echo "RAID OK - ($raid_ok disks ok)"
         elif [ $exit_status -eq "1" ]; then
-                msg_warning=`echo $check|grep -i rebuild`
-                echo "RAID WARNING - ($msg_warning)"
-                exit $exit_status
+                echo "RAID WARNING - ($raid_ok OK; $raid_warning warnings)"
         elif [ $exit_status -eq "2" ]; then
-                msg_critical1=`echo $check|grep -i failed`
-                msg_critical2=`echo $check|grep -i recovery`
-                echo "RAID CRITICAL - ($msg_critical1 $msg_critical2)"
-                exit $exit_status
+                echo "RAID CRITICAL - ($raid_ok OK; $raid_warning warnings; $raid_critical_1 crit)"
         fi
+	cat $TEMPFILE
+	rm -f "$TEMPFILE"
+        exit $exit_status
+
 }
 
 
@@ -135,11 +134,11 @@ case "$1" in
                 ;;
 	--all)
 		controllers=`sudo -u root hpacucli controller all show | sed 's/.*Slot \([0-9]*\).*/\1/'`
-		check=`for i in $controllers ; do sudo -u root $HPACUCLI controller slot=$i ld all show;done`
+		for i in $controllers ; do sudo -u root $HPACUCLI controller slot=$i pd all show status;done > $TEMPFILE
 		check_raid
 		;;
         -s)
-                check=`sudo -u root $HPACUCLI controller slot=$2 ld all show`
+                sudo -u root $HPACUCLI controller slot=$2 pd all show status > $TEMPFILE
                 check_raid
                 ;;
         *)
