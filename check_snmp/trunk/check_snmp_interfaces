@@ -28,6 +28,7 @@
 use lib qw ( /usr/local/nagios/perl/lib );
 use Net::SNMP;
 use Getopt::Std;
+use Socket;
 
 $script         = "check_snmp_interfaces";
 $script_version = "1.1";
@@ -179,9 +180,10 @@ if ($opt_C) {
     $community = $opt_C;
 }
 $exclude_interface = "bull";
-if ($opt_E) {
+if (defined($opt_E)) {
     $exclude_interface = $opt_E;
 }
+
 if ($opt_w) {
     $warning = $opt_w;
 }
@@ -204,6 +206,17 @@ $version = "1";
     -version   => $version,
     -timeout   => $timeout,
 );
+
+
+if ( !defined($s) ) {
+	if (!gethostbyname($hostname)) {
+		print "Can't resolve $hostname !\n";
+	}
+	else {
+		print "Unable to establish SNMP session with $hostname !\n";
+	}
+	exit(1);
+}
 
 if ( !defined( $s->get_request($oid_sysDescr) ) ) {
 
@@ -406,6 +419,7 @@ Usage: $script -H <hostname> -c <community> [...]
 Options: -H 	Hostname or IP address
          -C 	Community (default is public)
 	 -B     To use MIB designed for Brocade San switches
+	 -E     Exclude Regexp
 	 -d 	Debug
 	 -l 	Detailed Output (Long service output)
 
