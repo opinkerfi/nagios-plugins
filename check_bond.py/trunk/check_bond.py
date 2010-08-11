@@ -28,7 +28,7 @@ def readbond( interface ):
 	# Read interface info
 	try:
 		bondfh = open (intfile, 'r')
-	except IOError as (errno, strerror):
+	except IOError, (errno, strerror):
 		print "Unable to open bond %s: %s" %  (intfile, strerror)
 		sys.exit(3)
 	except:
@@ -68,7 +68,7 @@ def readbond( interface ):
 	return bond
 
 def usage():
-    print "Ble"
+    print "Usage: %s -i bond0" % sys.argv[0]
 
 def main(argv):
     # Set variables
