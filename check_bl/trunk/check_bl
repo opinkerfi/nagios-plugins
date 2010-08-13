@@ -109,11 +109,11 @@ else { $state = 'CRITICAL' }
 
 if (%listed) 
 {
-  print "Listed at"; 
+  print "IP $host is listed at"; 
   foreach (keys(%listed)) { print " $_" }
   print "\n";
 }
-else { print "Not black-listed\n" }
+else { print "IP $host Not black-listed\n" }
 
 exit $ERRORS{$state};
 
