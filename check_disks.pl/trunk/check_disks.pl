@@ -338,26 +338,29 @@ my $cmp_warn=0;     # compteur de disques en avertissement
 my $cmp_crit=0;     # compteur de disques critiques
 my $perf_data="";   # Donnees de perf
 
+my $critical_disks = "";
+my $warning_disks = "";
+my $ok_disks = "";
+
 # Tests Warn et Crit de tous les fs et creation de l'output
 foreach my $f (keys %checkdisks) {
+	if ($opt_v) { $output .= "\n"; }
     if($checkdisks{$f}->{pfree} < $checkdisks{$f}->{critical}) {
+	$critical_disks .= " " . $f ;	
         $cmp_crit++;
-        $output .= "[$f " . byte2human($checkdisks{$f}->{free}) .
-                           " (" . $checkdisks{$f}->{pfree} . '% free)] ';
-        $output .= "<br>" if ($opt_html);
     } 
     elsif ($checkdisks{$f}->{pfree} < $checkdisks{$f}->{warning}) {
+	$warning_disks .= " " . $f ;	
         $cmp_warn++;
-        $output .= "[$f " . byte2human($checkdisks{$f}->{free}) .
-                           " (" . $checkdisks{$f}->{pfree} . '% free)] ';
-        $output .= "<br>" if ($opt_html);
     } else {
-        if ($opt_v) {
-            $output .= "\n[$f " . byte2human($checkdisks{$f}->{free}) .
-                          " (" . $checkdisks{$f}->{pfree} . '% free)] ' ;
-            $output .= "<br>" if ($opt_html);
-        }
+	$ok_disks .= " " . $f ;	
     }
+        $output .= "[$f " . byte2human($checkdisks{$f}->{free}) .
+                          " (" . $checkdisks{$f}->{pfree} . '% free) ;' .
+			   "warning=" . $checkdisks{$f}->{warning} . "% " .
+			   "critical=" . $checkdisks{$f}->{critical} . "% " .
+			'] ' ;
+        $output .= "<br>" if ($opt_html);
 	    #$output .= "\n";
     
     # Donnees de Perfs
@@ -403,7 +406,7 @@ if (-d $opt_srvperf) {
 
 # Sortie du plugin : sans donnees de perfs qui sont stockes 
 # dans d'autres fichiers
-print "DISK $retour $output | $perf_data\n";
+print "DISK $retour $critical_disks $warning_disks ...  $output | $perf_data\n";
 exit $EXIT_CODES{$retour};
 
 ##########################################################################
