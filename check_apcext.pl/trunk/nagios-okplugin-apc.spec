@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check APC devices
 Name:		nagios-okplugin-apc
-Version:	0.0.1
+Version:	0.0.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -26,7 +26,7 @@ Checks APC devices, both netbotz and UPS
 %install
 rm -rf %{buildroot}
 install -D -p -m 0755 check_apcext.pl %{buildroot}%{_libdir}/nagios/plugins/check_apcext.pl
-install -D -p -m 0755 check_snmp_apc_ups %{buildroot}%{_libdir}/nagios/plugins/snmp_apc_ups
+install -D -p -m 0755 check_snmp_apc_ups %{buildroot}%{_libdir}/nagios/plugins/check_snmp_apc_ups
 
 %clean
 rm -rf %{buildroot}
