@@ -1,0 +1,35 @@
+#!/bin/sh
+BODYFILE=/tmp/check_eva.body
+LASTCHECK=`ls -la /etc/sssu.out | awk ' { print $6,$7,$8 }'`
+COMMANDFILE="/etc/nagios/check_eva.sssu"
+
+
+if [ ! -f $COMMANDFILE ]; then
+	echo "Error, could not find commandfile $COMMANDFILE"
+	exit 3
+fi
+
+/usr/local/sbin/sssu "file $COMMANDFILE" |grep -v PASSWORD  > /etc/sssu.out
+
+PROBLEM=`grep -w operationalstate /etc/sssu.out |grep -v good |wc -l`
+
+SUMMARY=`awk ' $1 == "objectname"  { STORAGE=$3 } \
+$1 == "operationalstate"  { STATE=$3 } \
+$1 == "managementhostname" { print STORAGE, STATE } ' /etc/sssu.out`
+
+totalstoragespace=`grep totalstoragespace /etc/sssu.out | awk '{ print $3 }'`
+usedstoragespace=`grep usedstoragespace /etc/sssu.out | awk '{ print $3 }'`
+availablestoragespace=`grep availablestoragespace /etc/sssu.out | awk '{ print $3 }'`
+
+PERFDATA="totalstoragespace=$totalstoragespace usedstoragespace=$usedstoragespace availablestoragespace=$availablestoragespace"
+
+if  [ "$PROBLEM" -gt 0 ]; then
+	echo "Warning, HP EVA Requires attention. $SUMMARY | $PERFDATA"
+	echo "EVA state last checked at $LASTCHECK"
+	grep -E 'operationalstate|operationalstatedetail|objectname|licensestate|systemtype|storagespace' /etc/sssu.out
+	exit 1
+fi
+echo "OK, HP EVA reports: $SUMMARY | $PERFDATA"
+echo "EVA state last checked at $LASTCHECK"
+grep -E 'operationalstate|operationalstatedetail|objectname|licensestate|systemtype|storagespace' /etc/sssu.out
+
