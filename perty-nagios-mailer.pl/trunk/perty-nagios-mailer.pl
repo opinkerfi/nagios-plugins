@@ -90,7 +90,7 @@ if ($state ne 'OK') {
 	$ack = qq{
   <tr>
     <td colspan="1" style="background: black;color: white;font-weight: bold">Service Actions</td>
-    <td colspan="1" style="background: white;color: black"><a class="cmd" href="$ackurl?cmd_typ=$nagioscmd{service_ack}">Acknowledge</a> <a class="cmd" href="$ackurl?cmd_typ=$nagioscmd{service_downtime}">Schedule Downtime</a></td>
+    <td colspan="1" style="background: white;color: black"><a class="cmd" href="$ackurl&cmd_typ=$nagioscmd{service_ack}">Acknowledge</a> <a class="cmd" href="$ackurl&cmd_typ=$nagioscmd{service_downtime}">Schedule Downtime</a></td>
   </tr>
 };
 }
