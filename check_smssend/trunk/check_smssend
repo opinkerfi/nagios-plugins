@@ -1,0 +1,98 @@
+#!/bin/sh
+
+
+DIRECTORY=/var/spool/sms/incoming
+MAX_HOURS=24
+PURGE_OLD_FILES=no
+FROM_NUMBER=""
+VERSION=1.0
+
+OK=0
+WARNING=1
+CRITICAL=2
+UNKNOWN=3
+
+
+print_help() { 
+      echo "check_smsend version $VERSION"
+      echo "This plugin checks sms incoming for new SMS"
+      echo ""
+      echo "Usage: $0 [--directory] [--max-age] [--purge-old-files] [--verbose]"
+      echo ""
+}
+
+
+
+# Parse arguments
+while [ $# -gt 0 ]
+do
+  case $1
+  in
+    -h)
+      print_help
+      shift 1
+	exit $OK
+    ;;
+
+    --help)
+	print_help
+	shift 1
+	exit $OK
+    ;;
+    --max-age)
+      MAX_AGE=$2
+      shift 2
+    ;;
+    --directory)
+      DIRECTORY=$2
+      shift 2
+    ;;
+    --purge-old-files)
+      PURGE_OLD_FILES=yes
+      shift 1
+    ;;
+    --verbose)
+      VERBOSE=yes
+      shift 1
+    ;;
+    *)
+	echo "Invalid parameter: $1"
+	print_help
+	exit $UNKNOWN
+    ;;
+  esac
+done
+
+
+
+if [ ! -d "$DIRECTORY" ]; then
+	echo "Unknown - $DIRECTORY not found or not readable"
+	exit $UNKNOWN
+fi
+
+
+RESULT=`find $DIRECTORY -type f -mtime -${MAX_HOURS}`
+TMP=`echo $RESULT|wc -w`
+
+
+# Clean up old files if we are asked to
+if [ "$PURGE_OLD_FILES" = "YES" ]; then
+	find $DIRECTORY -type f -mtime +${MAX_HOURS} -exec rm -f {} \;
+fi
+
+# Fail if we find no files
+if [ $TMP -lt 1 ]; then
+	echo "Warning - No recent SMS found in $DIRECTORY"
+	exit $WARNING
+fi
+
+
+echo "OK - $TMP files found in $DIRECTORY"
+if [ ! -z "$VERBOSE" ]; then
+	for i in $RESULT; do echo $i; done
+fi
+exit $OK
+
+
+
+
