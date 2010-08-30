@@ -1,15 +1,132 @@
 #!/bin/sh
+
+# Some defaults
+hostaddress=evahost
+username=eva
+password=eva1234
+
 BODYFILE=/tmp/check_eva.body
 LASTCHECK=`ls -la /etc/sssu.out | awk ' { print $6,$7,$8 }'`
 COMMANDFILE="/etc/nagios/check_eva.sssu"
+VERSION=1.0
+
+OK=0
+WARNING=1
+CRITICAL=2
+UNKNOWN=3
 
 
-if [ ! -f $COMMANDFILE ]; then
-        echo "Error, could not find commandfile $COMMANDFILE"
-        exit 3
+
+
+
+print_help() {
+      echo "check_eva version $VERSION"
+      echo "This plugin checks status of HP EVA Array via sssu command"
+      echo ""
+      echo "Usage: $0 [OPTIONS]"
+      echo "Options:"
+      echo  "[-H <host>]"
+      echo  "[--username <user>]"
+      echo  "[--password <password]"
+      echo  "[--test]"
+      echo   "[--help]"
+      echo ""
+}
+
+
+
+# Parse arguments
+while [ $# -gt 0 ]
+do
+  case $1
+  in
+    -H)
+      hostaddress=$2
+      shift 2
+    ;;
+
+    --username)
+      username=$2
+      shift 2
+    ;;
+
+    --password)
+      password=$2
+      shift 2
+    ;;
+
+    -P)
+      password=$2
+      shift 2
+    ;;
+
+    -U)
+      username=$2
+      shift 2
+    ;;
+
+
+
+
+    --test)
+      testmode=$1
+      shift 1
+    ;;
+    --help)
+      print_help ;
+      exit $OK
+    ;;
+
+    *)
+      print_help ;
+      exit $UNKNOWN
+    ;;
+  esac
+done
+  
+
+
+
+
+
+# Compatibility with old style use case of this file
+if [ $# -eq 0 ]; then
+  
+  if [ ! -f $COMMANDFILE ]; then
+    echo "Error, could not find commandfile $COMMANDFILE"
+    exit 3
+  fi
+  
+  /usr/local/sbin/sssu "file $COMMANDFILE" |grep -v PASSWORD  > /etc/sssu.out
+
 fi
 
-#/usr/local/sbin/sssu "file $COMMANDFILE" |grep -v PASSWORD  > /etc/sssu.out
+
+
+
+
+
+
+
+
+# Only run actual SSSU command if this is not a test run
+#if [ -z $testmode ]; then
+#  /usr/local/sbin/sssu "file $COMMANDFILE" |grep -v PASSWORD  > /etc/sssu.out
+#fi
+
+
+
+# Run the actual sssu command
+CMD1="set option on_error=continue"
+CMD2="select manager $hostaddress USERNAME=$username PASSWORD=$password"
+CMD3="ls system full"
+
+if [ "$DEBUG" == "1" ]; then
+  echo "Debug: $CMD2"
+fi
+
+/usr/local/sbin/sssu "$CMD1" "$CMD2" "$CMD3" | grep -v PASSWORD > /etc/sssu.out
+
 
 PROBLEM=`grep -w operationalstate /etc/sssu.out |grep -v good |wc -l`
 ERRORCHECK1=`grep -i error /etc/sssu.out| grep -v on_error | wc -l`
