@@ -5,32 +5,61 @@ COMMANDFILE="/etc/nagios/check_eva.sssu"
 
 
 if [ ! -f $COMMANDFILE ]; then
-	echo "Error, could not find commandfile $COMMANDFILE"
-	exit 3
+        echo "Error, could not find commandfile $COMMANDFILE"
+        exit 3
 fi
 
-/usr/local/sbin/sssu "file $COMMANDFILE" |grep -v PASSWORD  > /etc/sssu.out
+#/usr/local/sbin/sssu "file $COMMANDFILE" |grep -v PASSWORD  > /etc/sssu.out
 
 PROBLEM=`grep -w operationalstate /etc/sssu.out |grep -v good |wc -l`
+ERRORCHECK1=`grep -i error /etc/sssu.out| grep -v on_error | wc -l`
+ERRORCHECK2=`grep -w operationalstate /etc/sssu.out | wc -l`
+
 
 SUMMARY=`awk ' $1 == "objectname"  { STORAGE=$3 } \
 $1 == "operationalstate"  { STATE=$3 } \
-$1 == "managementhostname" { print STORAGE "=" STATE } ' /etc/sssu.out`
+$1 == "managementhostname" { print STORAGE "=" STATE ";" } ' /etc/sssu.out | tr '\n' ' '`
 
-totalstoragespace=`grep totalstoragespace /etc/sssu.out | awk '{ print $3 }'`
-usedstoragespace=`grep usedstoragespace /etc/sssu.out | awk '{ print $3 }'`
-availablestoragespace=`grep availablestoragespace /etc/sssu.out | awk '{ print $3 }'`
 
-PERFDATA="totalstoragespace=$totalstoragespace usedstoragespace=$usedstoragespace availablestoragespace=$availablestoragespace"
+PERFDATA=`awk ' $1 == "objectname"  { STORAGE=$3 } \
+$1 == "totalstoragespace" { totalstoragespace=STORAGE "_" $1 "=" $3 } \
+$1 == "usedstoragespace" { usedstoragespace=STORAGE "_" $1 "=" $3 } \
+$1 == "availablestoragespace" { availablestoragespace=STORAGE "_" $1 "=" $3 } \
+$1 == "managementhostname" { print totalstoragespace, usedstoragespace, availablestoragespace } ' /etc/sssu.out | tr '\n' ' '`
+
+
+
+#totalstoragespace=`grep totalstoragespace /etc/sssu.out | awk '{ print $3 }' | tr '\n' ' ' `
+#usedstoragespace=`grep usedstoragespace /etc/sssu.out | awk '{ print $3 }' | tr '\n' ' '`
+#availablestoragespace=`grep availablestoragespace /etc/sssu.out | awk '{ print $3 }' | tr '\n' ' '`
+
+#PERFDATA="totalstoragespace=$totalstoragespace usedstoragespace=$usedstoragespace availablestoragespace=$availablestoragespace"
 
 if  [ "$PROBLEM" -gt 0 ]; then
-	echo "Warning, HP EVA Requires attention. $SUMMARY | $PERFDATA"
-	echo "EVA state last checked at $LASTCHECK"
-	grep -E 'operationalstate|operationalstatedetail|objectname|licensestate|systemtype|storagespace' /etc/sssu.out
-	exit 1
+        echo "Warning - HP EVA Requires attention. $SUMMARY | $PERFDATA"
+        echo "EVA state last checked at $LASTCHECK"
+        grep -E 'operationalstate|operationalstatedetail|objectname|licensestate|systemtype|storagespace' /etc/sssu.out
+        exit 1
 fi
-echo "OK, HP EVA reports: $SUMMARY | $PERFDATA" | tr '\n' ' '
-echo
+
+
+
+if [ "$ERRORCHECK1" -gt 0 ]; then
+        echo "Unknown - failed to run sssu command"
+        cat /etc/sssu.out
+        exit 3
+fi
+
+if [ "$ERRORCHECK2" -lt 1 ]; then
+        echo "Unknown - Could not retrieve information via sssu"
+        cat /etc/sssu.out
+        exit 3
+fi
+
+
+
+
+echo "OK - HP EVA reports: $SUMMARY | $PERFDATA"
 echo "EVA state last checked at $LASTCHECK"
-grep -E 'operationalstate|operationalstatedetail|objectname|licensestate|systemtype|storagespace' /etc/sssu.out 
+grep -E 'operationalstate|operationalstatedetail|objectname|licensestate|systemtype|storagespace' /etc/sssu.out
 
