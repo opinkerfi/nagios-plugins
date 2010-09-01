@@ -1,4 +1,32 @@
 #!/usr/bin/python
+#
+# Copyright 2010, Pall Sigurdsson <palli@opensource.is>
+#
+# check_eva.py is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# check_eva.py is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# About this script
+# 
+# This script will check the status of all EVA arrays via the sssu binary.
+# You will need the sssu binary in path (/usr/bin/sssu is a good place)
+# If you do not have sssu, check your commandview CD, it should have both
+# binaries for Windows and Linux
+
+
+
+
+
+
 
 
 # First some defaults
@@ -38,19 +66,22 @@ import subprocess
 
 def print_help():
 	print "check_eva version %s" % version
-	print "This plugin of HP EVA Array with the sssu command"
+	print "This plugin checks HP EVA Array with the sssu command"
 	print ""
 	print "Usage: %s [OPTIONS]" % argv[0]
 	print "OPTIONS:"
 	print  " [--host <host>]"
 	print  " [--username <user>]"
 	print  " [--password <password]"
+	print  " [--path </path/to/sssu>]"
 	print  " [--mode <mode>] "
 	print  " [--test]"
 	print  " [--debug]"
 	print  " [--help]"
 	print  ""
 	print  " Valid modes are: %s" % ', '.join(valid_modes)
+	print  ""
+	print  "Example: %s --host commandview.example.net --username eva --password myPassword --mode check_systems" % (argv[0])
 
 
 def error(errortext):
