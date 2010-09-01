@@ -6,7 +6,7 @@ hostname="evahost"
 username="eva"
 password="eval1234"
 mode="check_systems"
-debug = False
+debugging = False
 path=''
 
 # No real need to change anything below here
@@ -46,6 +46,7 @@ def print_help():
 	print  " [--password <password]"
 	print  " [--mode <mode>] "
 	print  " [--test]"
+	print  " [--debug]"
 	print  " [--help]"
 	print  ""
 	print  " Valid modes are: %s" % ', '.join(valid_modes)
@@ -58,8 +59,8 @@ def error(errortext):
 	exit(unknown)
 
 def debug( debugtext ):
-	debug = False
-	if debug:
+	global debugging
+	if debugging:
 		print  debugtext
 
 # parse arguments
@@ -83,6 +84,8 @@ while len(arguments) > 0:
 		mode=arguments.pop(0)
 		if mode not in valid_modes:
 			error("Invalid --mode %s" % arg)
+	elif arg == '-d' or arg == '--debug':
+		debugging=True
 	elif arg == '-h' or '--help':
 		print_help()
 		exit(ok)
@@ -193,14 +196,16 @@ def run_sssu(system=None, command="ls system full"):
 			object = object['master']
 		if key == 'iomodules':
 			key = 'modules'
-		if key in subitems.values():
-			object['master'][key] = []
+		#if key in subitems.values():
+		#	object['master'][key] = []
 		if key in subitems.keys():
 			mastergroup = subitems[key]
 			master = object['master']
 			object = {}
 			object['object_type'] = key
 			object['master'] = master
+			if not object['master'].has_key(mastergroup):
+				object['master'][mastergroup] = []
 			object['master'][mastergroup].append(object)
 			
 			
@@ -334,9 +339,10 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
                 # Lets get some perfdata
                 identifier = "%s/%s_" % (systemname,objectname)
 		if command == "ls disk_group full":
-			totalstoragespacegb=i['totalstoragespacegb']
-			usedstoragespacegb=i['usedstoragespacegb']
-			warninggb= float(totalstoragespacegb) * float( i['occupancyalarmlevel'] ) / 100
+			totalstoragespacegb= float( i['totalstoragespacegb'] )
+			usedstoragespacegb= float ( i['usedstoragespacegb'] )
+			occupancyalarmlvel = float( i['occupancyalarmlevel'] ) 
+			warninggb= totalstoragespacegb * occupancyalarmlvel / 100
 			perfdata = perfdata + " '%sdiskusage'=%s;%s;%s "% (identifier, usedstoragespacegb,warninggb,totalstoragespacegb)
 
 		for field in perfdata_fields:
@@ -351,7 +357,7 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 		else:
 			long( "\n%s/%s = %s (%s)\n"%(systemname,objectname,i['operationalstate'], i['operationalstatedetail']) )
 		if command == "ls disk_group full" and usedstoragespacegb > warninggb:
-				long("- %s - diskgroup usage is over threshold!\n" % state[warning])
+				long("- %s - diskgroup usage is over %s%% threshold !\n" % (state[warning], occupancyalarmlvel) )
 		elif command == "ls disk full" and i['operationalstate'] != 'good':
 			long( "Warning - %s=%s (%s)\n" % (i['diskname'], i['operationalstate'], i['operationalstatedetail'] ))
 			fields="modelnumber firmwareversion serialnumber failurepredicted  diskdrivetype".split()
@@ -366,7 +372,7 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 		if i.has_key('sensors'): # disk_shelf has this
 			sensor_status = not_present
 			for sensor in i['sensors']:
-				stat = check_operationalstate( sensor,print_failed_objects=True, namefield='name', valid_states=['good','notavailable','unsupported'])
+				stat = check_operationalstate( sensor,print_failed_objects=True, namefield='name', valid_states=['good','notavailable','unsupported','notinstalled'])
 				sensor_status = max( stat, sensor_status )
 			nagios_state = max(nagios_state, sensor_status)
 			long('- %s on sensors\n'% state[sensor_status])
@@ -443,25 +449,28 @@ def check_controllers():
 			if hostport['operationalstate'] != 'good':
 				hostportstate = max(warning,hostport_state)
 				long("Hostport %s state = %s\n" % hostport['portname'], hostport['operationalstate'])
-		for fan in i['fans']:
-			fanstate = max(fanstate,ok)
-			#long(" %s = %s\n" % (fan['fanname'], fan['status']))
-			if fan.has_key('status'): status = fan['status']
-			elif fan.has_key('installstatus'): status = fan['installstatus']
-			if status != 'normal' and status != 'yes':
-				fanstate = max(warning,fanstate)
-				long("Fan %s status = %s\n" % (fan['fanname'],status))
-		for source in i['powersources']:
-			source_state = max(source_state,ok)
-			if not source.has_key('status'): continue
-			if source['state'] != 'good':
-				source_state = max(warning,source_state)
-				long("Powersource %s status = %s\n" % (source['type'],source['state']))
-		for module in i['modules']:
-			module_state = max(module_state,ok)
-			if module['operationalstate'] not in ('good','not_present'):
-				module_state = max(warning,module_state)
-				long("Battery Module %s status = %s\n" % (module['name'],module['operationalstate']))
+		if i.has_key('fans'):
+			for fan in i['fans']:
+				fanstate = max(fanstate,ok)
+				#long(" %s = %s\n" % (fan['fanname'], fan['status']))
+				if fan.has_key('status'): status = fan['status']
+				elif fan.has_key('installstatus'): status = fan['installstatus']
+				if status != 'normal' and status != 'yes':
+					fanstate = max(warning,fanstate)
+					long("Fan %s status = %s\n" % (fan['fanname'],status))
+		if i.has_key('powersources'):
+			for source in i['powersources']:
+				source_state = max(source_state,ok)
+				if not source.has_key('status'): continue
+				if source['state'] != 'good':
+					source_state = max(warning,source_state)
+					long("Powersource %s status = %s\n" % (source['type'],source['state']))
+		if i.has_key('modules'):
+			for module in i['modules']:
+				module_state = max(module_state,ok)
+				if module['operationalstate'] not in ('good','not_present'):
+					module_state = max(warning,module_state)
+					long("Battery Module %s status = %s\n" % (module['name'],module['operationalstate']))
 		
 
 		for i in (fanstate,hostportstate,sensorstate,source_state,module_state,cache_state,controllertemperaturestatus):
