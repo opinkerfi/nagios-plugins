@@ -27,6 +27,7 @@ state[critical] = "Critical"
 state[unknown] = "Unknown"
 
 longserviceoutput="\n"
+perfdata=""
 
 valid_modes = ( "check_systems", "check_controllers", "check_diskgroups","check_disks", "check_diskshelfs")
 
@@ -102,6 +103,8 @@ subitems['hostport'] = 'hostports'
 subitems['module'] = 'modules'
 subitems['sensor'] = 'sensors'
 subitems['powersupply'] = 'powersupplies'
+subitems['bus'] = 'communicationbuses'
+subitems['port'] = 'fibrechannelports'
 
 
 '''runCommand: Runs command from the shell prompt. Exit Nagios style if unsuccessful'''
@@ -259,6 +262,10 @@ def get_perfdata(object, interesting_fields, identifier=""):
 		perfdata = perfdata + "'%s%s'=%s " % (identifier, i, object[i])
 	return perfdata
 
+def add_perfdata(text):
+	global perfdata
+	text = text.strip()
+	perfdata = perfdata + " %s " % (text)
 
 def long(text):
 	global longserviceoutput
@@ -269,7 +276,8 @@ def get_longserviceoutput(object, interesting_fields):
 		longserviceoutput = longserviceoutput + "%s = %s \n" %(i, object[i])
 	return longserviceoutput
 
-def check_operationalstate(object, print_failed_objects=False,namefield='objectname',detailfield='operationalstate',valid_states=['good']):
+def check_operationalstate(object, print_failed_objects=False,namefield='objectname',detailfield='operationalstatedetail',statefield='operationalstate',valid_states=['good']):
+	if not object.has_key(detailfield): detailfield = statefield
 	if object['operationalstate'] not in valid_states:
 		if print_failed_objects:
 			long("Warning, %s=%s (%s)\n" % ( object[namefield], object['operationalstate'], object[detailfield] ))
@@ -278,51 +286,22 @@ def check_operationalstate(object, print_failed_objects=False,namefield='objectn
 	return ok
 
 
-def check_diskgroups():
-	summary=""
-	perfdata=""
-	nagios_state = ok
-	systems = run_sssu()
-	objects = []
-	for i in systems:
-		result = run_sssu(system=i['objectname'], command="ls disk_group full")
-		for x in result:
-			x['systemname'] = i['objectname']
-			objects.append( x )
-	for i in objects:
-		systemname = i['systemname']
-		objectname = i['diskgroupname']
-		# Lets see if this object is working
-		nagios_state = max( check_operationalstate(i), nagios_state )
-
-		# Lets add to the summary
-		summary = summary + " %s/%s=%s " %(systemname,objectname, i['operationalstate'])
-		
-		# Lets get some perfdata
-		interesting_fields = "totaldisks|totalstoragespacegb|usedstoragespacegb|occupancyalarmlevel"
-		identifier = "%s/%s_" % (systemname,objectname)
-		perfdata = perfdata + get_perfdata(i, interesting_fields.split('|'), identifier=identifier)
-
-		# Long Serviceoutput
-		interesting_fields = "totaldisks levelingstate levelingprogress totalstoragespacegb usedstoragespacegb  occupancyalarmlevel"
-		long( "\n%s/%s = %s (%s)\n"%(systemname,objectname,i['operationalstate'], i['operationalstatedetail']) )
-		for x in interesting_fields.split():
-			long( "- %s = %s\n" % (x, i[x]))
-
-	end(summary,perfdata,longserviceoutput,nagios_state)
-		
 
 def check_generic(command="ls disk full",namefield="objectname", perfdata_fields=[], longserviceoutputfields=[], detailedsummary=False):
         summary=""
-        perfdata=""
+	global perfdata
         nagios_state = ok
         systems = run_sssu()
         objects = []
-        for i in systems:
-                result = run_sssu(system=i['objectname'], command=command)
-                for x in result:
-                        x['systemname'] = i['objectname']
-                        objects.append( x )
+	if command == 'ls system full':
+		objects = systems
+		for i in systems: i['systemname'] = '' #i['objectname']
+	else:
+        	for i in systems:
+        	        result = run_sssu(system=i['objectname'], command=command)
+        	        for x in result:
+        	                x['systemname'] = i['objectname']
+        	                objects.append( x )
 	summary = "%s objects found " % len(objects)
         for i in objects:
                 systemname = i['systemname']
@@ -338,51 +317,69 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 
                 # Lets get some perfdata
                 identifier = "%s/%s_" % (systemname,objectname)
+		i['identifier'] = identifier
+
+
+		for field in perfdata_fields:
+			if field == '': continue
+			add_perfdata( "'%s%s'=%s " % (identifier, field, i[field]) )
+		
+		# Disk group gets a special perfdata treatment
 		if command == "ls disk_group full":
 			totalstoragespacegb= float( i['totalstoragespacegb'] )
 			usedstoragespacegb= float ( i['usedstoragespacegb'] )
 			occupancyalarmlvel = float( i['occupancyalarmlevel'] ) 
 			warninggb= totalstoragespacegb * occupancyalarmlvel / 100
-			perfdata = perfdata + " '%sdiskusage'=%s;%s;%s "% (identifier, usedstoragespacegb,warninggb,totalstoragespacegb)
-
-		for field in perfdata_fields:
-			if field == '': continue
-			perfdata = perfdata + "'%s%s'=%s " % (identifier, field, i[field])
-
-
+			add_perfdata( " '%sdiskusage'=%s;%s;%s "% (identifier, usedstoragespacegb,warninggb,totalstoragespacegb) )
+		
                 # Long Serviceoutput
-                #interesting_fields = "totaldisks levelingstate levelingprogress totalstoragespacegb usedstoragespacegb  occupancyalarmlevel"
-		if command == "ls disk full":
-			pass
-		else:
+		
+		# There are usually to many disks for nagios to display. Skip.
+		if command != "ls disk full":
 			long( "\n%s/%s = %s (%s)\n"%(systemname,objectname,i['operationalstate'], i['operationalstatedetail']) )
+		
+		# If diskgroup has a problem because it is over allocated. Lets inform about that
 		if command == "ls disk_group full" and usedstoragespacegb > warninggb:
 				long("- %s - diskgroup usage is over %s%% threshold !\n" % (state[warning], occupancyalarmlvel) )
+		# If a disk has a problem, lets display some extra info on it
 		elif command == "ls disk full" and i['operationalstate'] != 'good':
 			long( "Warning - %s=%s (%s)\n" % (i['diskname'], i['operationalstate'], i['operationalstatedetail'] ))
 			fields="modelnumber firmwareversion serialnumber failurepredicted  diskdrivetype".split()
 			for field in fields:
 				long( "- %s = %s\n" % (field, i[field]) )
-		if i.has_key('powersupplies'): # disk_shelf has this
-			powersupply_status = not_present
-			for powersupply in i['powersupplies']:
-				powersupply_status = max( check_operationalstate( powersupply, print_failed_objects=True, namefield='name', detailfield='name'), powersupply_status )
-			nagios_state = max(nagios_state, powersupply_status)
-			long('- %s on powersupplies\n'% state[powersupply_status])
-		if i.has_key('sensors'): # disk_shelf has this
-			sensor_status = not_present
-			for sensor in i['sensors']:
-				stat = check_operationalstate( sensor,print_failed_objects=True, namefield='name', valid_states=['good','notavailable','unsupported','notinstalled'])
-				sensor_status = max( stat, sensor_status )
-			nagios_state = max(nagios_state, sensor_status)
-			long('- %s on sensors\n'% state[sensor_status])
-				
 
+
+		nagios_state = max(nagios_state, check_multiple_objects(i, 'sensors'))
+		nagios_state = max(nagios_state, check_multiple_objects(i, 'fans'))
+		nagios_state = max(nagios_state, check_multiple_objects(i, 'powersupplies'))
+		nagios_state = max(nagios_state, check_multiple_objects(i, 'communicationbuses'))
+		nagios_state = max(nagios_state, check_multiple_objects(i, 'fibrechannelports'))
+		nagios_state = max(nagios_state, check_multiple_objects(i, 'modules'))
                 for x in longserviceoutputfields:
                         long( "- %s = %s\n" % (x, i[x]))
 
         end(summary,perfdata,longserviceoutput,nagios_state)
 
+def check_multiple_objects(object, name):
+	item_status = not_present
+	if object.has_key(name): 
+		item_status = not_present
+		valid_states=['good']
+		namefield="name"	
+		detailfield = 'operationalstatedetail'
+
+
+
+		if name == 'fans' or name == 'sensors':
+			valid_states = ['good','notavailable','unsupported','notinstalled']
+		num_items = len(object[name])
+		for item in object[name]:
+			stat = check_operationalstate( item,print_failed_objects=True, namefield=namefield, valid_states=valid_states,detailfield=detailfield)
+			item_status = max( stat, item_status )
+		long('- %s on %s (%s detected)\n'% (state[item_status], name, num_items) )
+		add_perfdata( " '%s%s'=%s" % (object['identifier'],name, num_items) )
+	return item_status
+	
 
 
 def check_controllers():
@@ -489,15 +486,19 @@ def check_controllers():
 	end(summary,perfdata,longserviceoutput,nagios_state)
 
 if mode == 'check_systems':
-	check_systems()
+                perfdata_fields = 'totalstoragespace usedstoragespace availablestoragespace'.split()
+                longserviceoutputfields = 'licensestate systemtype firmwareversion nscfwversion totalstoragespace usedstoragespace availablestoragespace'.split()
+		command = "ls system full"
+		namefield="objectname"
+		check_generic(command=command,namefield=namefield,longserviceoutputfields=longserviceoutputfields, perfdata_fields=perfdata_fields)
+		#check_systems
 elif mode == 'check_controllers':
 	check_controllers()
 elif mode == 'check_diskgroups':
 	command = "ls disk_group full"
 	namefield='diskgroupname'
 	longserviceoutputfields = "totaldisks levelingstate levelingprogress totalstoragespacegb usedstoragespacegb  occupancyalarmlevel".split()
-	perfdata_fields="totaldisks".split()
-	
+	perfdata_fields="totaldisks".split()	
 	check_generic(command=command,namefield=namefield,longserviceoutputfields=longserviceoutputfields, perfdata_fields=perfdata_fields)
 elif mode == 'check_disks':
 	check_generic(command="ls disk full",namefield="objectname")
