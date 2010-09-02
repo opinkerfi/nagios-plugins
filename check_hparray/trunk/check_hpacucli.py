@@ -86,9 +86,9 @@ def runCommand(command):
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-    if proc.returncode == 127: # File not found, lets print path
-        path=getenv("PATH")
-        print "Current Path: %s" % (path)
+    #if proc.returncode == 127: # File not found, lets print path
+    path=getenv("PATH")
+    print "Current Path: %s" % (path)
     exit(unknown)
   else:
     return stdout
