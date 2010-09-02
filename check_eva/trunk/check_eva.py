@@ -61,6 +61,7 @@ valid_modes = ( "check_systems", "check_controllers", "check_diskgroups","check_
 
 from sys import exit
 from sys import argv
+from os import getenv,putenv
 import subprocess
 
 
@@ -144,7 +145,9 @@ def runCommand(command):
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-    #print stderr, stdout
+    if proc.returncode == 127: # File not found, lets print path
+	path=os.getenv("PATH")
+	print "Current Path: %s" % (path)
     exit(unknown)
   else:
     return stdout
@@ -166,7 +169,6 @@ def run_sssu(system=None, command="ls system full"):
 	commands.append(command)
 
 	commandstring = "sssu "
-	if path != '': commandstring = path + commandstring
 	for i in commands: commandstring = commandstring + '"%s" '% i 
 	
 	#print mystring
@@ -186,15 +188,15 @@ def run_sssu(system=None, command="ls system full"):
 
 	# Lets process the top few results from the sssu command. Make sure the results make sense
 	error = 0
-	if output.pop(0) != '': error = 1
-	if output.pop(0) != '': error = 1
-	if output.pop(0) != 'SSSU for HP StorageWorks Command View EVA': error = 1
-	if output.pop(0).find('Version:') != 0: error=1
-	if output.pop(0).find('Build:') != 0: error=1
-	if output.pop(0).find('NoSystemSelected> ') != 0: error=1
-	if output.pop(0) != '': error = 1
-	if output.pop(0).find('NoSystemSelected> ') != 0: error=1
-	if output.pop(0) != '': error = 1
+	if output.pop(0).strip() != '': error = 1
+	if output.pop(0).strip() != '': error = 1
+	if output.pop(0).strip() != 'SSSU for HP StorageWorks Command View EVA': error = 1
+	if output.pop(0).strip().find('Version:') != 0: error=1
+	if output.pop(0).strip().find('Build:') != 0: error=1
+	if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
+	if output.pop(0).strip() != '': error = 1
+	if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
+	if output.pop(0).strip() != '': error = 1
 	buffer = ""
 	for i in output:
 		buffer = buffer + i + "\n"
@@ -515,6 +517,17 @@ def check_controllers():
 			
 		long('\n')
 	end(summary,perfdata,longserviceoutput,nagios_state)
+
+def set_path():
+	global path
+	if path == '':
+		path = "C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
+	current_path = getenv('PATH')
+	current_path = "%s:%s" % (current_path,path)
+	putenv('PATH', current_path)
+set_path()
+
+
 
 if mode == 'check_systems':
                 perfdata_fields = 'totalstoragespace usedstoragespace availablestoragespace'.split()
