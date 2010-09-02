@@ -119,13 +119,12 @@ def set_path(path):
         current_path = getenv('PATH')
 	if current_path.find('C:\\') > -1: # We are on this platform
 		path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
-		path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin\hpacucli.exe"
-		path = path + ";C:\Program Files\Compaq\Hpacucli\Bin\hpacucli.exe"
-		print "Tons of path added"
+		path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin"
+		path = path + ";C:\Program Files\Compaq\Hpacucli\Bin"
 	else:
 		path = ":/usr/local/bin"
-        current_path = "%s%s" % (current_path,path)
-        putenv('PATH', current_path)
+	current_path = "%s%s" % (current_path,path)
+	putenv('PATH', current_path)
 
 
 
