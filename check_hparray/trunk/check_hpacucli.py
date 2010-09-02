@@ -261,7 +261,7 @@ def check(object, field, valid_states = ['OK']):
 	return state
 
 def main():
-
+	pass
 
 
 if __name__ == '__main__':
