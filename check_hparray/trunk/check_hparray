@@ -45,6 +45,7 @@ STATE_DEPENDENT=4
 
 
 TEMPFILE=`mktemp`
+alias print_revision=echo
 
 print_usage() {
         echo ""
@@ -68,7 +69,6 @@ print_help() {
         echo ""
         echo "This plugin checks hardware status for HP Proliant servers using HPACUCLI utility."
         echo ""
-        support
         exit 0
 }
 
