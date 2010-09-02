@@ -125,6 +125,7 @@ def set_path(path):
 		path = ":/usr/local/bin"
 	current_path = "%s%s" % (current_path,path)
 	putenv('PATH', current_path)
+	print "current path: ", current_path
 	print "put: %s" %(getenv('PATH'))
 
 
