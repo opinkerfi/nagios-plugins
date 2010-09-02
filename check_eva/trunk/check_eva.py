@@ -522,7 +522,7 @@ def set_path():
 	global path
 	current_path = getenv('PATH')
 	if path == '':
-		if current_path.find('C:\\') > 1: # We are on this platform
+		if current_path.find('C:\\') > -1: # We are on this platform
 			path = "C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
 		else:
 			path = "/usr/local/bin"
