@@ -116,7 +116,7 @@ def add_summary(text):
 	summary = summary + text
 
 def set_path(path):
-        current_path = getenv('PATH')
+	current_path = getenv('PATH')
 	if current_path.find('C:\\') > -1: # We are on this platform
 		path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
 		path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin"
