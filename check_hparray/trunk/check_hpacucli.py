@@ -52,7 +52,7 @@ summary=""
 
 from sys import exit
 from sys import argv
-from os import getenv,putenv
+from os import getenv,putenv,environ
 import subprocess
 
 
@@ -124,9 +124,7 @@ def set_path(path):
 	else:
 		path = ":/usr/local/bin"
 	current_path = "%s%s" % (current_path,path)
-	putenv('PATH', current_path)
-	print "current path: ", current_path
-	print "put: %s" %(getenv('PATH'))
+	environ['PATH'] = current_path
 
 
 
