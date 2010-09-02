@@ -117,14 +117,13 @@ def add_summary(text):
 
 def set_path(path):
         current_path = getenv('PATH')
-        if path == '':
-                if current_path.find('C:\\') > -1: # We are on this platform
-                        path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
-			path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin\hpacucli.exe"
-			path = path + ";C:\Program Files\Compaq\Hpacucli\Bin\hpacucli.exe"
-			print "Tons of path added"
-                else:
-                        path = ":/usr/local/bin"
+	if current_path.find('C:\\') > -1: # We are on this platform
+		path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
+		path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin\hpacucli.exe"
+		path = path + ";C:\Program Files\Compaq\Hpacucli\Bin\hpacucli.exe"
+		print "Tons of path added"
+	else:
+		path = ":/usr/local/bin"
         current_path = "%s%s" % (current_path,path)
         putenv('PATH', current_path)
 
