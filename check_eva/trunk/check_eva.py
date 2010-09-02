@@ -146,7 +146,7 @@ def runCommand(command):
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
     if proc.returncode == 127: # File not found, lets print path
-	path=os.getenv("PATH")
+	path=getenv("PATH")
 	print "Current Path: %s" % (path)
     exit(unknown)
   else:
@@ -520,9 +520,12 @@ def check_controllers():
 
 def set_path():
 	global path
-	if path == '':
-		path = "C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
 	current_path = getenv('PATH')
+	if path == '':
+		if current_path.find('C:\\') > 1: # We are on this platform
+			path = "C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
+		else:
+			path = "/usr/local/bin"
 	current_path = "%s:%s" % (current_path,path)
 	putenv('PATH', current_path)
 set_path()
