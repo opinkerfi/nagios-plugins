@@ -143,7 +143,7 @@ def runCommand(command):
   proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE,)
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
-    print "Errorcode %s on command '%s' (%s)" % (proc.returncode,command, stderr.strip())
+    print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
     #print stderr, stdout
     exit(unknown)
   else:
@@ -444,8 +444,8 @@ def check_controllers():
 		#longserviceoutput = longserviceoutput + get_longserviceoutput(i, interesting_fields.split('|') )
 		#longserviceoutput = longserviceoutput + "\n%s/%s\n"%(systemname,controllername)
 		long( "\n%s/%s = %s (%s)\n"%(systemname,controllername,i['operationalstate'], i['operationalstatedetail']) )
-		long( "-firmwareversion = %s \n" %(i['firmwareversion']))
-		long( "-serialnumber = %s \n" %(i['serialnumber']))
+		long( "- firmwareversion = %s \n" %(i['firmwareversion']))
+		long( "- serialnumber = %s \n" %(i['serialnumber']))
 
 
 		controllertemperaturestatus = not_present
