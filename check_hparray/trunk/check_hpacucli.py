@@ -122,6 +122,7 @@ def set_path(path):
                         path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
 			path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin\hpacucli.exe"
 			path = path + ";C:\Program Files\Compaq\Hpacucli\Bin\hpacucli.exe"
+			print "Tons of path added"
                 else:
                         path = ":/usr/local/bin"
         current_path = "%s%s" % (current_path,path)
@@ -261,12 +262,12 @@ def check(object, field, valid_states = ['OK']):
 	return state
 
 def main():
-	set_path('')
 
 
 
 if __name__ == '__main__':
 	main()
+	set_path('')
 	check_controllers()
 	check_logicaldisks()
 	check_physicaldisks()
