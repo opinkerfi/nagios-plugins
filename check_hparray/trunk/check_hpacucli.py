@@ -22,7 +22,7 @@
 # If you do not have sssu, check your commandview CD, it should have both
 # binaries for Windows and Linux
 
-debugging = True
+debugging = False
 
 
 
@@ -100,6 +100,7 @@ def end():
 	global nagios_status
         print "%s - %s | %s" % (state[nagios_status], summary,perfdata)
         print longserviceoutput
+	if nagios_status < 0: nagios_status = unknown
         exit(nagios_status)
 
 def add_perfdata(text):
