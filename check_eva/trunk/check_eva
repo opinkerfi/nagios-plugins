@@ -1,4 +1,6 @@
 #!/bin/sh
+# THIS ONE IS DEPRECATED AND NO LONGER MAINTAINED!
+# Check check_eva.py
 
 # Some defaults
 hostaddress=evahost
