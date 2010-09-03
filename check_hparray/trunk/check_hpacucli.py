@@ -65,6 +65,7 @@ def print_help():
         print "Usage: %s [--help]" % argv[0]
         print "Usage: %s [--version]" % argv[0]
         print "Usage: %s [--no-perfdata]" % argv[0]
+        print "Usage: %s [--no-longoutput]" % argv[0]
         print  ""
 
 
