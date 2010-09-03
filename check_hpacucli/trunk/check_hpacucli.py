@@ -17,10 +17,9 @@
 
 # About this script
 # 
-# This script will check the status of all EVA arrays via the sssu binary.
-# You will need the sssu binary in path (/usr/bin/sssu is a good place)
-# If you do not have sssu, check your commandview CD, it should have both
-# binaries for Windows and Linux
+# This script will check the status of Smart Array Raid Controller
+# You will need the hpacucli binary in path (/usr/sbin/hpacucli is a good place)
+# hpacucli comes with the Proliant Support Pack (PSP) from HP
 
 debugging = False
 
@@ -201,7 +200,7 @@ def check_controllers():
 		global nagios_state
 		nagios_state = unknown
 		end()
-	add_summary( "Found: %s controllers" % ( len(controllers) ) )
+	add_summary( "Found %s controllers" % ( len(controllers) ) )
 	for i in controllers:
 		controller_status = check(i, 'Controller Status', 'OK' )
 		status = max(status, controller_status)
@@ -297,6 +296,9 @@ def parse_arguments():
 		elif arg == '--path':
 			path = arguments.pop(0)
 			set_path(path)
+		elif arg == '--debug':
+			global debugging
+			debugging = True
 		else:
 			print_help()
 			exit(unknown)
@@ -310,7 +312,6 @@ def main():
 	check_controllers()
 	check_logicaldisks()
 	check_physicaldisks()
-	for i in environ['PATH'].split(':'): print i
 	end()	
 
 
