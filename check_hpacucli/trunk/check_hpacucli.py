@@ -64,6 +64,7 @@ def print_help():
         print "Usage: %s " % argv[0]
         print "Usage: %s [--help]" % argv[0]
         print "Usage: %s [--version]" % argv[0]
+        print "Usage: %s [--path </path/to/hpacucli>]" % argv[0]
         print "Usage: %s [--no-perfdata]" % argv[0]
         print "Usage: %s [--no-longoutput]" % argv[0]
         print  ""
@@ -124,11 +125,14 @@ def add_summary(text):
 def set_path(path):
 	current_path = getenv('PATH')
 	if current_path.find('C:\\') > -1: # We are on this platform
-		path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
-		path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin"
-		path = path + ";C:\Program Files\Compaq\Hpacucli\Bin"
-	else:
-		path = ":/usr/sbin"
+		if path == '':
+			path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
+			path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin"
+			path = path + ";C:\Program Files\Compaq\Hpacucli\Bin"
+		else: path = ';' + path
+	else:	# Unix/Linux, etc
+		if path == '': path = ":/usr/sbin"
+		else: path = ':' + path
 	current_path = "%s%s" % (current_path,path)
 	environ['PATH'] = current_path
 
@@ -190,9 +194,14 @@ def run_hpacucli(type='controllers', controller=None):
 controllers = []
 def check_controllers():
 	global controllers
-	controllers = run_hpacucli()
 	status = -1
-	add_summary( "%s controllers found" % ( len(controllers) ) )
+	controllers = run_hpacucli()
+	if len(controllers) == 0:
+		add_summary("No Disk Controllers Found. Exiting...")
+		global nagios_state
+		nagios_state = unknown
+		end()
+	add_summary( "Found: %s controllers" % ( len(controllers) ) )
 	for i in controllers:
 		controller_status = check(i, 'Controller Status', 'OK' )
 		status = max(status, controller_status)
@@ -213,7 +222,7 @@ def check_controllers():
 		if controller_status > ok or cache_status > ok:
 			add_summary( ";%s on %s;" % (state[controller_status], i['name']) )
 
-	add_summary('. ')	
+	add_summary(', ')	
 	return status
 
 
@@ -227,7 +236,7 @@ def check_logicaldisks():
 			logicaldisks.append ( ld )
         status = -1
 	add_long("\nChecking logical Disks:" )
-        add_summary( "%s logicaldisks found" % ( len(logicaldisks) ) )
+        add_summary( "%s logicaldisks" % ( len(logicaldisks) ) )
 	for i in logicaldisks:
 		ld_status =  check(i, 'Status' )
 		status = max(status, ld_status)
@@ -247,7 +256,7 @@ def check_physicaldisks():
                         disks.append ( disk )
         status = -1
         add_long("\nChecking Physical Disks:" )
-        add_summary( "%s %s found" % ( len(disks), disktype ) )
+        add_summary( "%s %s" % ( len(disks), disktype ) )
         for i in disks:
                 disk_status =  check(i, 'Status' )
                 status = max(status, disk_status)
@@ -277,20 +286,33 @@ def check(object, field, valid_states = ['OK']):
 	return state
 
 
-def main():
-	pass
 
+def parse_arguments():
+	arguments = argv[1:]
+	while len(arguments) > 0:
+		arg = arguments.pop(0)
+		if arg == '--help':
+			print_help()
+			exit(ok)
+		elif arg == '--path':
+			path = arguments.pop(0)
+			set_path(path)
+		else:
+			print_help()
+			exit(unknown)
+			
+
+
+
+def main():
+	parse_arguments()
+	set_path('')
+	check_controllers()
+	check_logicaldisks()
+	check_physicaldisks()
+	for i in environ['PATH'].split(':'): print i
+	end()	
 
 
 if __name__ == '__main__':
 	main()
-	set_path('')
-	check_controllers()
-	if len(controllers) == 0:
-		add_summary("No Disk Controllers Found")
-		global nagios_state
-		nagios_state = unknown
-		end()
-	check_logicaldisks()
-	check_physicaldisks()
-	end()	
