@@ -22,7 +22,7 @@
 # If you do not have sssu, check your commandview CD, it should have both
 # binaries for Windows and Linux
 
-debugging = False
+debugging = True
 
 
 
@@ -87,9 +87,13 @@ def runCommand(command):
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-    #if proc.returncode == 127: # File not found, lets print path
-    path=getenv("PATH")
-    print "Current Path: %s" % (path)
+    if proc.returncode == 127: # File not found, lets print path
+        path=getenv("PATH")
+        print "Check if your path is correct %s" % (path)
+    if stderr.find('Password:') == 0 and command.find('sudo') == 0:
+      print "Check if user is in the sudoers file"
+    if stderr.find('sorry, you must have a tty to run sudo') == 0 and command.find('sudo') == 0:
+      print "Please remove 'requiretty' from /etc/sudoers"
     exit(unknown)
   else:
     return stdout
@@ -124,7 +128,7 @@ def set_path(path):
 		path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin"
 		path = path + ";C:\Program Files\Compaq\Hpacucli\Bin"
 	else:
-		path = ":/usr/local/bin"
+		path = ":/usr/sbin"
 	current_path = "%s%s" % (current_path,path)
 	environ['PATH'] = current_path
 
@@ -137,6 +141,9 @@ def run_hpacucli(type='controllers', controller=None):
 	elif type=='logicaldisks' or type=='physicaldisks':
 		if controller.has_key('Slot'):
 			identifier = 'slot=%s' % (controller['Slot'] )
+		else:
+			add_summary( "Controller not found" )
+			end()
 		if type=='logicaldisks':
 			command = "hpacucli  controller %s ld all show detail" % (identifier)
 		if type=='physicaldisks':
@@ -146,6 +153,10 @@ def run_hpacucli(type='controllers', controller=None):
 	#command="hpacucli  controller slot=1 ld all show detail"
 	debug ( command ) 
 	output = runCommand(command)
+	# Some basic error checking
+	if output.find('Error: You need to have administrator rights to continue.') > -1:
+		command = "sudo " + command 
+		output = runCommand(command)
 	output = output.split('\n')
 	objects = []
 	object = None
@@ -265,6 +276,7 @@ def check(object, field, valid_states = ['OK']):
 	nagios_status = max(nagios_status, state)
 	return state
 
+
 def main():
 	pass
 
@@ -273,6 +285,11 @@ if __name__ == '__main__':
 	main()
 	set_path('')
 	check_controllers()
+	if len(controllers) == 0:
+		add_summary("No Disk Controllers Found")
+		global nagios_state
+		nagios_state = unknown
+		end()
 	check_logicaldisks()
 	check_physicaldisks()
 	end()	
