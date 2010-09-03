@@ -187,8 +187,12 @@ def check_controllers():
 		cache_status = check(i, 'Cache Status' )
 		status = max(status, cache_status)
 		
-		controller_serial = i['Serial Number']
-		cache_serial = i['Cache Serial Number']
+		controller_serial = 'n/a'
+		cache_serial = 'n/a'
+		if i.has_key('Serial Number'):
+			controller_serial = i['Serial Number')
+		if i.has_key('Cache Serial Number'):
+			cache_serial = i['Cache Serial Number']
 		add_long ( "%s" % (i['name']) )
 		add_long( "- Controller Status: %s (sn: %s)" % ( state[controller_status], controller_serial ) )
 		add_long( "- Cache Status: %s (sn: %s)" % ( state[cache_status], cache_serial ) )
