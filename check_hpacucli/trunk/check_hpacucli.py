@@ -22,7 +22,7 @@
 # If you do not have sssu, check your commandview CD, it should have both
 # binaries for Windows and Linux
 
-debugging = True
+debugging = False
 
 
 
@@ -279,6 +279,7 @@ def check(object, field, valid_states = ['OK']):
 
 def main():
 	pass
+
 
 
 if __name__ == '__main__':
