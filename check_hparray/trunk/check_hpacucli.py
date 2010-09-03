@@ -190,7 +190,7 @@ def check_controllers():
 		controller_serial = 'n/a'
 		cache_serial = 'n/a'
 		if i.has_key('Serial Number'):
-			controller_serial = i['Serial Number')
+			controller_serial = i['Serial Number']
 		if i.has_key('Cache Serial Number'):
 			cache_serial = i['Cache Serial Number']
 		add_long ( "%s" % (i['name']) )
