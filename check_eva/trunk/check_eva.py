@@ -30,9 +30,9 @@
 
 
 # First some defaults
-hostname="evahost"
+hostname="localhost"
 username="eva"
-password="eval1234"
+password="eva1234"
 mode="check_systems"
 debugging = False
 path=''
@@ -194,14 +194,14 @@ def run_sssu(system=None, command="ls system full"):
 	if output.pop(0).strip().find('Version:') != 0: error=1
 	if output.pop(0).strip().find('Build:') != 0: error=1
 	if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
-	if output.pop(0).strip() != '': error = 1
-	if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
-	if output.pop(0).strip() != '': error = 1
+	#if output.pop(0).strip() != '': error = 1
+	#if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
+	#if output.pop(0).strip() != '': error = 1
 	buffer = ""
 	for i in output:
 		buffer = buffer + i + "\n"
-		if i.find('error') > -1:
-			print "Error running sssu command: %s" % i
+		if i.find('Error') > -1:
+			print "This is the command i was trying to execute: %s" % i
 			error = 1
 		if i.find('information:') > 0: break
 	if error > 0: 
