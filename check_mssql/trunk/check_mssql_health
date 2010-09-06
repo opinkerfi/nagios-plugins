@@ -2877,6 +2877,8 @@ my @params = (
     "database=s",
     "datafile=s",
     "waitevent=s",
+    "namefromfile=s",
+    "queryfile=s",
     "name=s",
     "name2=s",
     "regexp",
@@ -2922,6 +2924,11 @@ if ($commandline{mode} eq "encode") {
   printf "%s\n", $input;
   exit $ERRORS{OK};
 }
+
+if (!exists $commandline{queryfile} || !$commandline{queryfile}) {
+	$commandline{queryfile} = "/etc/nagios/check_mssql_health-queries";
+}
+
 
 if (exists $commandline{3}) {
   $ENV{NRPE_MULTILINESUPPORT} = 1;
@@ -2976,6 +2983,34 @@ if (exists $commandline{runas}) {
           $important_env, $ENV{$important_env} if $DBD::MSSQL::Server::verbose;
     }
   }
+}
+
+if (exists $commandline{namefromfile}) {
+	if (!open QF, "<$commandline{queryfile}") {
+		print "Unable to open queryfile $commandline{queryfile} param --queryfile\n";
+		print_help();
+		exit $ERRORS{OK};
+	}
+	
+	my $sql = '';
+	while (my $l = <QF>) {
+		# Double chomp if needed
+		chomp($l) for (0..1);
+		
+		my ($k, $sql_line) = split(/\s*=\s*/, $l);
+		
+		if ($k eq $commandline{namefromfile}) {
+			$sql = $sql_line;
+			last;
+		}
+	}
+	close QF;
+
+	if (!$sql) {
+		print "Unable to find namefromfile key $commandline{namefromfile} in file $commandline{queryfile}\n";
+		exit $ERRORS{OK};
+	}
+	$commandline{name}=$sql;
 }
 
 if ($needs_restart) {
