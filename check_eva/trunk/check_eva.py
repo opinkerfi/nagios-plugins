@@ -27,14 +27,18 @@
 
 
 
+# Some Defaults
+show_perfdata = True
+show_longserviceoutput = True
+debugging = False
 
 
-# First some defaults
+
+# check_eva defaults
 hostname="localhost"
 username="eva"
 password="eva1234"
 mode="check_systems"
-debugging = False
 path=''
 
 # No real need to change anything below here
@@ -119,6 +123,14 @@ while len(arguments) > 0:
 			error("Invalid --mode %s" % arg)
 	elif arg == '-d' or arg == '--debug':
 		debugging=True
+	elif arg == '--longserviceoutput':
+		show_longserviceoutput = True
+	elif arg == '--no-longserviceoutput':
+		show_longserviceoutput = False
+	elif arg == '--perfdata':
+		show_perfdata = True
+	elif arg == '--no-perfdata':
+		show_perfdata = False
 	elif arg == '-h' or '--help':
 		print_help()
 		exit(ok)
@@ -257,8 +269,12 @@ def run_sssu(system=None, command="ls system full"):
 	return objects
 
 def end(summary,perfdata,longserviceoutput,nagios_state):
+	global show_longserviceoutput
+	global show_perfdata
+	if not show_perfdata: perfdata = ""
 	print "%s - %s | %s" % (state[nagios_state], summary,perfdata)
-	print longserviceoutput
+	if show_longserviceoutput:
+		print longserviceoutput
 	exit(nagios_state)
 
 def check_systems():
