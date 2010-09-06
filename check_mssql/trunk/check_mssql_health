@@ -2999,7 +2999,7 @@ if (exists $commandline{namefromfile}) {
 		
 		$l =~ s/#.*$//g;
 		
-		my ($k, $sql_line) = split(/\s*=\s*/, $l);
+		my ($k, $sql_line) = split(/\s*=\s*/, $l, 1);
 		
 		if ($k eq $commandline{namefromfile}) {
 			$sql = $sql_line;
