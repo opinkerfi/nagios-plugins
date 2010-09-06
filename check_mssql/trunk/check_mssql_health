@@ -2997,6 +2997,8 @@ if (exists $commandline{namefromfile}) {
 		# Double chomp if needed
 		chomp($l) for (0..1);
 		
+		$l =~ s/#.*$//g;
+		
 		my ($k, $sql_line) = split(/\s*=\s*/, $l);
 		
 		if ($k eq $commandline{namefromfile}) {
