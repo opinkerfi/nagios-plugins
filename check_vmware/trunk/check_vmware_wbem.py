@@ -27,9 +27,9 @@ debugging = False
 # Some defaults
 show_perfdata = True
 show_longserviceoutput = True
-uri='https://vmware:5989'
-username='root'
-password='root1234'
+uri='https://is-hdq-esx0:5989'
+username='tommi'
+password='tommi'
 namespace='root/cimv2'
 
 
@@ -325,8 +325,11 @@ def parse_arguments():
 			show_perfdata = True
 		elif arg == '--no-perfdata':
 			show_perfdata = False
-		elif arg == '--url':
-			url = arguments.pop(0)
+		elif arg == '--uri':
+			uri = arguments.pop(0)
+		elif arg == '--hostname' or arg == '--host':
+			hostname = arguments.pop(0)
+			uri = 'https://%s:5989' % (hostname)
 		elif arg == '--username':
 			username = arguments.pop(0)
 		elif arg == '--password':
@@ -359,12 +362,13 @@ def check_wbem():
 	wbemclient = pywbem.WBEMConnection(uri, (username, password), namespace)
 	
 	for classe in ClassesToCheck :
-		classe_status = ok
+		classe_status = not_present
 		debug("Checking classe %s" %(classe) )
 		instance_list = wbemclient.EnumerateInstances(classe)
 		for instance in instance_list :
 			elementName = instance['ElementName']
-			debug( "ElementName = %s" %(elementName) )
+			for i in instance.keys():
+				debug ( "%s %s = %s" %(elementName, i, instance[i]) )
 			if instance['OperationalStatus'] is not None :
 				elementStatus = instance['OperationalStatus'][0]
 				debug( "Element %s = %s" % (elementName, elementStatus) )
@@ -394,9 +398,9 @@ def check_wbem():
 				nagios_status = max(nagios_status, interpretStatus)
 				classe_status = max(classe_status, interpretStatus)
 				if interpretStatus > ok:
-					add_summary( "%s=%s" % (elementName, interpretStatus) )
-					add_long( "%s=%s" % (elementName, interpretStatus) )
-		add_long( "%s = %s" % (classe, classe_status) )
+					add_summary( "%s=%s" % (elementName, state[interpretStatus]) )
+				add_long( "- %s=%s" % (elementName, state[interpretStatus]) )
+		add_long( "%s = %s" % (classe, state[classe_status]) )
 
 def main():
 	parse_arguments()
