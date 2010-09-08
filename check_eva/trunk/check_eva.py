@@ -295,13 +295,13 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	global escape_newlines
 
 	message = "%s - %s" % ( state[nagios_state], summary)
-	if escape_newlines == True:
-		lines = message.split('\n')
-		message = '\\n'.join(lines)
 	if show_perfdata:
 		message = "%s | %s" % ( message, perfdata)
 	if show_longserviceoutput:
 		message = "%s\n%s" % ( message, longserviceoutput.strip())
+	if escape_newlines == True:
+		lines = message.split('\n')
+		message = '\\n'.join(lines)
 	if nagios_server is not None:
 		try:
 			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
