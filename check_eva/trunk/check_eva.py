@@ -43,6 +43,7 @@ path=''
 nagios_server = ""
 nagios_port = 8002
 nagios_myhostname = "localhost"
+escape_newlines = False
 
 # No real need to change anything below here
 version="1.0"
@@ -144,6 +145,8 @@ while len(arguments) > 0:
 		nagios_server = arguments.pop(0)
 	elif arg == '--nagiosport':
 		nagios_port = arguments.pop(0)
+	elif arg == '--escape-newlines':
+		escape_newlines = True
 	elif arg == '-h' or '--help':
 		print_help()
 		exit(ok)
@@ -289,8 +292,12 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	global nagios_myhostname
 	global hostname
 	global mode
+	global escape_newlines
 
 	message = "%s - %s" % ( state[nagios_state], summary)
+	if escape_newlines == True:
+		lines = message.split('\n')
+		message = '\\n'.join(lines)
 	if show_perfdata:
 		message = "%s | %s" % ( message, perfdata)
 	if show_longserviceoutput:
