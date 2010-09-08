@@ -40,6 +40,8 @@ username="eva"
 password="eva1234"
 mode="check_systems"
 path=''
+nagios_server = None
+nagios_port = None
 
 # No real need to change anything below here
 version="1.0"
@@ -134,6 +136,12 @@ while len(arguments) > 0:
 	elif arg == '-h' or '--help':
 		print_help()
 		exit(ok)
+	elif arg == '--nagioserver':
+		global nagios_server
+		nagios_server = arguments.pop(0)
+	elif arg == '--nagiosport':
+		global nagios_port
+		nagios_port = arguments.pop(0)
 	else:
 		error( "Invalid argument %s"% arg)
 
@@ -271,10 +279,17 @@ def run_sssu(system=None, command="ls system full"):
 def end(summary,perfdata,longserviceoutput,nagios_state):
 	global show_longserviceoutput
 	global show_perfdata
-	if not show_perfdata: perfdata = ""
-	print "%s - %s | %s" % (state[nagios_state], summary,perfdata)
+	global nagios_server
+	global nagios_port
+
+	message = "%s - %s" % ( state[nagios_state], summary)
+	if show_perfdata:
+		message = "%s | %s" % ( message, perfdata)
 	if show_longserviceoutput:
-		print longserviceoutput
+		message = "%s\n%s" % ( message, longserviceoutput)
+	if nagios_server is not None:
+		pass
+	print message
 	exit(nagios_state)
 
 def check_systems():
