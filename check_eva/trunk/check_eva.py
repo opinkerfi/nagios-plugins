@@ -40,7 +40,7 @@ username="eva"
 password="eva1234"
 mode="check_systems"
 path=''
-nagios_server = None
+nagios_server = ""
 nagios_port = None
 
 # No real need to change anything below here
@@ -137,10 +137,8 @@ while len(arguments) > 0:
 		print_help()
 		exit(ok)
 	elif arg == '--nagioserver':
-		global nagios_server
 		nagios_server = arguments.pop(0)
 	elif arg == '--nagiosport':
-		global nagios_port
 		nagios_port = arguments.pop(0)
 	else:
 		error( "Invalid argument %s"% arg)
@@ -291,6 +289,10 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 		pass
 	print message
 	exit(nagios_state)
+
+''' phone_home: Sends results to remote nagios server via python xml-rpc '''
+def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
+	pass
 
 def check_systems():
 	summary=""
