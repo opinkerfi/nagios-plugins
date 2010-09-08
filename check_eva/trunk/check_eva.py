@@ -41,7 +41,8 @@ password="eva1234"
 mode="check_systems"
 path=''
 nagios_server = ""
-nagios_port = None
+nagios_port = 8002
+nagios_myhostname = "localhost"
 
 # No real need to change anything below here
 version="1.0"
@@ -69,9 +70,13 @@ from sys import exit
 from sys import argv
 from os import getenv,putenv
 import subprocess
+import xmlrpclib
+import socket
+socket.setdefaulttimeout(5) 
 
 
 def print_help():
+	print broken
 	print "check_eva version %s" % version
 	print "This plugin checks HP EVA Array with the sssu command"
 	print ""
@@ -133,13 +138,15 @@ while len(arguments) > 0:
 		show_perfdata = True
 	elif arg == '--no-perfdata':
 		show_perfdata = False
-	elif arg == '-h' or '--help':
-		print_help()
-		exit(ok)
-	elif arg == '--nagioserver':
+	elif arg == '--nagios_myhostname':
+		nagios_myhostname = arguments.pop(0)
+	elif arg == '--nagios_server':
 		nagios_server = arguments.pop(0)
 	elif arg == '--nagiosport':
 		nagios_port = arguments.pop(0)
+	elif arg == '-h' or '--help':
+		print_help()
+		exit(ok)
 	else:
 		error( "Invalid argument %s"% arg)
 
@@ -279,20 +286,29 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	global show_perfdata
 	global nagios_server
 	global nagios_port
+	global nagios_myhostname
+	global hostname
+	global mode
 
 	message = "%s - %s" % ( state[nagios_state], summary)
 	if show_perfdata:
 		message = "%s | %s" % ( message, perfdata)
 	if show_longserviceoutput:
-		message = "%s\n%s" % ( message, longserviceoutput)
+		message = "%s\n%s" % ( message, longserviceoutput.strip())
 	if nagios_server is not None:
-		pass
+		try:
+			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
+		except:
+			pass
 	print message
 	exit(nagios_state)
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
 def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
-	pass
+	uri = "http://%s:%s" % (nagios_server,nagios_port)
+	s = xmlrpclib.ServerProxy( uri )
+	s.nagiosupdate(hostname, servicename, status, message)
+	return 0
 
 def check_systems():
 	summary=""

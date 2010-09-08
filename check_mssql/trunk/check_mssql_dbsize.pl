@@ -7,10 +7,9 @@
 $HOSTNAME=$ARGV[0];
 
 
-$databases = `/usr/lib/nagios/plugins/check_nrpe -H $HOSTNAME -c listCounterInstances -a "SQLServer:Databases"`;
+$databases = `/usr/lib/nagios/plugins/check_nrpe -H $HOSTNAME -t 60 -c listCounterInstances -a "SQLServer:Databases"`;
 @array1 = split(/\,/, $databases);
 
-print "$databases ";
 
 #[root@nagios ~]# check_nrpe -H $HOSTNAME -c CheckCounter -a "Counter:Vanskilaskra=\SQLServer:Databases(Vanskilaskra)\Data File(s) Size (KB)"# OK all counters within bounds.|'Vanskilaskra'=30996480;0;0; 
 $num_databases = 0;
@@ -21,7 +20,7 @@ foreach $database (@array1)
 	$database =~ s/^\s*(.*?)\s*$/$1/;
 
 	# Call check_nrpe
-	$dbSize = `/usr/lib/nagios/plugins/check_nrpe -H $HOSTNAME -c CheckCounter -a 'Counter:$database=\\SQLServer:Databases($database)\\Data File(s) Size (KB)'`;
+	$dbSize = `/usr/lib/nagios/plugins/check_nrpe -H $HOSTNAME -t 60 -c CheckCounter -a 'Counter:$database=\\SQLServer:Databases($database)\\Data File(s) Size (KB)'`;
 
 	# Strip everything but the performance data
 	$dbSize =~ s/^.*\|(.*?)$/$1/;
