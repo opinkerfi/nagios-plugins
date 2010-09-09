@@ -77,7 +77,6 @@ socket.setdefaulttimeout(5)
 
 
 def print_help():
-	print broken
 	print "check_eva version %s" % version
 	print "This plugin checks HP EVA Array with the sssu command"
 	print ""
