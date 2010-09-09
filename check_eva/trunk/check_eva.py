@@ -142,7 +142,7 @@ while len(arguments) > 0:
 		nagios_myhostname = arguments.pop(0)
 	elif arg == '--nagios_server':
 		nagios_server = arguments.pop(0)
-	elif arg == '--nagiosport':
+	elif arg == '--nagios_port':
 		nagios_port = arguments.pop(0)
 	elif arg == '--escape-newlines':
 		escape_newlines = True
