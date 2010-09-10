@@ -104,7 +104,7 @@ def check_wbem():
 def main():
 	parse_arguments()
 	set_path('')
-	#check_wbem()
+	check_wbem()
 	end()	
 
 
@@ -266,7 +266,7 @@ def end():
 	global nagios_status
 	global show_longserviceoutput
 	global show_perfdata
-	message = "%s - %s" % ( state[nagios_state], summary)
+	message = "%s - %s" % ( state[nagios_status], summary)
 	if show_perfdata:
 		message = "%s | %s" % ( message, perfdata)
 	if show_longserviceoutput:
