@@ -47,6 +47,7 @@ state[unknown] = "Unknown"
 longserviceoutput="\n"
 perfdata=""
 summary=""
+sudo=False
 
 
 from sys import exit
@@ -155,11 +156,16 @@ def run_hpacucli(type='controllers', controller=None):
 	#command="hpacucli  controller slot=1 ld all show detail"
 	#command="hpacucli  controller slot=1 ld all show detail"
 	debug ( command ) 
+	if sudo: command = "sudo " + command
 	output = runCommand(command)
 	# Some basic error checking
-	if output.find('Error: You need to have administrator rights to continue.') > -1:
-		command = "sudo " + command 
-		output = runCommand(command)
+	error_strings = [ 'Permission denied' ]
+	error_strings.append('Error: You need to have administrator rights to continue.')
+	for error in error_strings:
+		if output.find( error ) > -1 and output.find("sudo") != 0:
+			command = "sudo " + command 
+			print command
+			output = runCommand(command)
 	output = output.split('\n')
 	objects = []
 	object = None
@@ -299,6 +305,9 @@ def parse_arguments():
 		elif arg == '--debug':
 			global debugging
 			debugging = True
+		elif arg == '--sudo':
+			global sudo
+			sudo = True
 		else:
 			print_help()
 			exit(unknown)
