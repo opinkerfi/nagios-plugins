@@ -1,0 +1,129 @@
+= check_eva =
+This script will check the status of HP EVA via the sssu command in a Nagios fashion. It can be run from either windows or linux host which has IP access to the Commandview which is managing the EVA. check_eva Runs in one of the following modes:
+
+ * check_systems - General health check of every eva
+ * check_controllers - Check each controller, fan status, power supply etc
+ * check_diskgroups - diskgroup health, occupancy level, raid status etc
+ * check_disks - physical disk health, loop condition, etc
+ * check_diskshelfs - temperature status, power supply status, fiberports, etc
+
+== Prerequisites ==
+ * The sssu binary (commandview CD has both windows and linux binaries)
+ * Hostname, Username, Password to command eva (any user in the local 'HP Storage Admins' group on the CVE server will suffice
+
+
+== Download ==
+check_eva.py can be download from directly from our software repo by clicking [http://opensource.is/trac/export/232/nagios-plugins/check_eva/trunk/check_eva.py" here].
+== help page ==
+{{{
+# python check_eva.py --help
+check_eva version 1.0
+This plugin checks HP EVA Array with the sssu command
+
+Usage: check_eva.py [OPTIONS]
+OPTIONS:
+ [--host <host>]
+ [--username <user>]
+ [--password <password]
+ [--path </path/to/sssu>]
+ [--mode <mode>] 
+ [--test]
+ [--debug]
+ [--help]
+
+ Valid modes are: check_systems, check_controllers, check_diskgroups, check_disks, check_diskshelfs
+
+Example: check_eva.py --host commandview.example.net --username eva --password myPassword --mode check_systems
+}}}
+
+== Example output ==
+
+=== check_systems ===
+{{{
+Warning - 1 objects found  /EVA01=attention  |  '/EVA01_totalstoragespace'=3304.20  '/EVA01_usedstoragespace'=3273.91  '/EVA01_availablestoragespace'=30.29 
+
+
+/EVA01 = attention (initialized_attention)
+- licensestate = attention_expiring
+- systemtype = HSV100
+- firmwareversion = 4100
+- nscfwversion = SR0FBFrunp-4100
+- totalstoragespace = 3304.20
+- usedstoragespace = 3273.91
+- availablestoragespace = 30.29
+
+}}}
+
+
+=== check_controllers ===
+{{{
+
+OK -  EVA01/Controller B (top)=good  EVA01/Controller A (bottom)=good  | 'EVA01/Controller B (top)_controllermainmemory'=256 'EVA01/Controller A (bottom)_controllermainmemory'=256 
+
+
+EVA01/Controller B (top) = good (initialized_ok)
+- firmwareversion = SR0FBFrunp-4100 
+- serialnumber = P66C5E3AAS102X 
+- OK on fans
+- OK on cachememory
+- Not Present on temperature
+- OK on hostports
+- OK on sensors
+- OK on powersupplies
+- OK on batterymodules
+
+
+EVA01/Controller A (bottom) = good (initialized_ok)
+- firmwareversion = SR0FBFrunp-4100 
+- serialnumber = P66C5E3AAS101Z 
+- OK on fans
+- OK on cachememory
+- Not Present on temperature
+- OK on hostports
+- OK on sensors
+- OK on powersupplies
+- OK on batterymodules
+
+}}}
+=== check_disks ===
+{{{
+OK - 28 objects found  | 
+}}}
+=== check_diskgroups ===
+{{{
+Warning - 1 objects found  EVA01/146GB_10_og_15K=attention  |  'EVA01/146GB_10_og_15K_totaldisks'=28  'EVA01/146GB_10_og_15K_diskusage'=3273.91;3271.158;3304.2 
+
+
+EVA01/146GB_10_og_15K = attention (initialized_attention)
+- Warning - diskgroup usage is over 99.0% threshold !
+- totaldisks = 28
+- levelingstate = inactive
+- levelingprogress = 100
+- totalstoragespacegb = 3304.20
+- usedstoragespacegb = 3273.91
+- occupancyalarmlevel = 99
+
+}}}
+
+=== check_diskshelves ===
+{{{
+OK - 2 objects found  |  'EVA01/Disk Enclosure 1_sensors'=18  'EVA01/Disk Enclosure 1_fans'=2  'EVA01/Disk Enclosure 1_powersupplies'=2  'EVA01/Disk Enclosure 1_communicationbuses'=4  'EVA01/Disk Enclosure 1_fibrechannelports'=4  'EVA01/Disk Enclosure 1_modules'=2  'EVA01/Disk Enclosure 2_sensors'=18  'EVA01/Disk Enclosure 2_fans'=2  'EVA01/Disk Enclosure 2_powersupplies'=2  'EVA01/Disk Enclosure 2_communicationbuses'=4  'EVA01/Disk Enclosure 2_fibrechannelports'=4  'EVA01/Disk Enclosure 2_modules'=2 
+
+
+EVA01/Disk Enclosure 1 = good (initialized_ok)
+- OK on sensors (18 detected)
+- OK on fans (2 detected)
+- OK on powersupplies (2 detected)
+- OK on communicationbuses (4 detected)
+- OK on fibrechannelports (4 detected)
+- OK on modules (2 detected)
+
+EVA01/Disk Enclosure 2 = good (initialized_ok)
+- OK on sensors (18 detected)
+- OK on fans (2 detected)
+- OK on powersupplies (2 detected)
+- OK on communicationbuses (4 detected)
+- OK on fibrechannelports (4 detected)
+- OK on modules (2 detected)
+}}}
+
