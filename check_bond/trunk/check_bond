@@ -117,8 +117,8 @@ def main(argv):
 		print "%s: %s%s %s" % (states[retval], outstring, "in bonding device", interface)
 		sys.exit(retval)
 
-	print "OK: bonding device %s up and running" % interface
-	sys.exit(0)
+    print "OK: bonding device %s up and running" % interface
+    sys.exit(0)
 
 
 if __name__ == "__main__":
