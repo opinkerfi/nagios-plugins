@@ -850,7 +850,7 @@ sub nagios {
     } elsif ($params{mode} =~ /^server::database::transactions/) {
       $self->add_nagios(
           $self->check_thresholds($self->{transactions_per_sec}, 10000, 50000),
-          sprintf "%s has %.4f transactions / sec",
+          sprintf "\n%s has %.4f transactions / sec",
           $self->{name}, $self->{transactions_per_sec});
       $self->add_perfdata(sprintf "%s_transactions_per_sec=%.4f;%s;%s",
           $self->{name}, $self->{transactions_per_sec},
@@ -958,7 +958,7 @@ sub nagios {
       } else { 
         $self->add_nagios( 
             $self->check_thresholds($self->{backup_age}, 48, 72), 
-            sprintf "%s backupped %dh ago", $self->{name}, $self->{backup_age});
+            sprintf "\n%s backupped %dh ago", $self->{name}, $self->{backup_age});
       } 
       $self->add_perfdata(sprintf "'%s_bck_age'=%d;%s;%s", 
           $self->{name}, $self->{backup_age}, 
