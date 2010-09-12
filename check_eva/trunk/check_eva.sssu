@@ -1,3 +1,0 @@
-set option on_error=continue
-select manager commandview USERNAME=nagiosuser PASSWORD=nagiospassword
-ls system full
