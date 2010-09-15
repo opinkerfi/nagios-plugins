@@ -17,9 +17,10 @@
 
 # About this script
 # 
-# This script will check the status of Smart Array Raid Controller
-# You will need the hpacucli binary in path (/usr/sbin/hpacucli is a good place)
-# hpacucli comes with the Proliant Support Pack (PSP) from HP
+# This script will check hardware status of VMware 3.x and 4.x via
+# wbem. Requires as a parameter hostname, username, and password
+# to your ESX or ESXi server.
+
 from sys import exit
 from sys import argv
 from os import getenv,putenv,environ
