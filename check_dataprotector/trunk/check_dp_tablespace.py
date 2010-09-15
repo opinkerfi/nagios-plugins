@@ -17,7 +17,9 @@
 
 # About this script
 # 
-# This script will check the tablespaces of a Dataprotector database
+# This script will check the tablespaces of HP Dataprotector by
+# using the omnidbutil -extendinfo command. Additionally displays
+# some perfdata of the tablespace size
 
 from sys import exit
 from sys import argv
