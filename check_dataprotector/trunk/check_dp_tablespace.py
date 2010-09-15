@@ -1,0 +1,315 @@
+#!/usr/bin/python
+#
+# Copyright 2010, Pall Sigurdsson <palli@opensource.is>
+#
+# This script is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This script is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# About this script
+# 
+# This script will check the tablespaces of a Dataprotector database
+
+from sys import exit
+from sys import argv
+from os import getenv,putenv,environ
+import subprocess
+
+
+
+# Some defaults
+show_perfdata = True
+show_longserviceoutput = True
+debugging = False
+default_warning_threshold = 90 # 90%
+
+
+import sys
+def check_tablespaces():
+	command = "omnidbutil -extendinfo"
+	output = runCommand( command )
+	output = output.split('\n')
+	tablespaces = []
+	currObject = None
+	for line in output:
+		words = line.split()
+		if line.find(':') > 0:
+			if len(words) > 2 and words[0] == 'Base':
+				currObject = {}
+				currObject['name'] = ' '.join ( words[2:] )
+				currObject['extensions'] = []
+				if currObject is not None and currObject not in tablespaces:
+					tablespaces.append ( currObject )
+			elif words[0] == 'Extension':
+				filename = ' '.join ( words[2:] )
+				currObject['extensions'].append( filename )
+		elif line.find('Maximum size with extensions') > -1:
+			max_size = int( words[5] )
+			currObject['max_size'] = max_size
+		elif line.find('Current size with extensions') > -1:
+			curr_size = int ( words[5] )
+			currObject['curr_size'] = curr_size
+	for i in tablespaces:
+		global default_warning_threshold
+		global nagios_status
+		warn = default_warning_threshold
+		warn = 60
+		max_size = i['max_size'] * 1024
+		curr_size = i['curr_size'] * 1024
+		occupancy = 100.0 * curr_size / max_size 
+		name = i['name'].strip(':').strip('"')
+		extensions = i['extensions']
+		
+		# Do some logic, see if this tablespace is getting full
+		if occupancy <= warn: status = ok
+		else: status = warning
+		nagios_status = max(nagios_status,status)
+		
+		if status > ok:
+			add_summary( "%s is %.2f%% full. " % (name, occupancy) ) 
+		else:
+			add_summary( "%s=%s. " %(name,state[status] ) )
+		# Long output
+		add_long( "%s on %s" % (state[status], name) )
+		add_long( "- Current Size: %s bytes" % (curr_size) )
+		add_long( "- Maximum Size: %s bytes" % (max_size) ) 
+		for ext in extensions:
+			extension_name = ext.strip(':').strip('"')
+			add_long( "- Extension %s" % (extension_name) )
+		# Perf Data
+		warning_size = max_size * warn * 0.01
+		perfdata = "'%s'=%sB;%s;%s" % (name,curr_size,warning_size,max_size)
+		add_perfdata( perfdata )
+	pass
+
+def main():
+	parse_arguments()
+	set_path('')
+	check_tablespaces()
+	end()	
+
+
+
+
+def parse_arguments():
+	global show_longserviceoutput
+	global debugging
+	global show_perfdata 
+	global url
+	global username
+	global password
+	arguments = argv[1:]
+	while len(arguments) > 0:
+		arg = arguments.pop(0)
+		if arg == '--help':
+			print_help()
+			exit(ok)
+		elif arg == '--path':
+			path = arguments.pop(0)
+			set_path(path)
+		elif arg == '--debug':
+			debugging = True
+		elif arg == '--longserviceoutput':
+			show_longserviceoutput = True
+		elif arg == '--no-longserviceoutput':
+			show_longserviceoutput = False
+		elif arg == '--perfdata':
+			show_perfdata = True
+		elif arg == '--no-perfdata':
+			show_perfdata = False
+		elif arg == '--uri':
+			uri = arguments.pop(0)
+		elif arg == '--hostname' or arg == '--host':
+			hostname = arguments.pop(0)
+			uri = 'https://%s:5989' % (hostname)
+		elif arg == '--username':
+			username = arguments.pop(0)
+		elif arg == '--password':
+			password = arguments.pop(0)
+		else:
+			print_help()
+			exit(unknown)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# No real need to change anything below here
+version="1.0"
+ok=0
+warning=1
+critical=2
+unknown=3 
+not_present = -1 
+nagios_status = -1
+nagios_server = None
+nagios_port = None
+
+
+state = {
+	not_present : "n/a",
+	ok          : "OK",
+	warning     : "Warning",
+	critical    : "Critical",
+	unknown     : "Unknown",
+}
+
+
+longserviceoutput="\n"
+perfdata=""
+summary=""
+
+
+
+
+
+def print_help():
+        print "check_hpacucli version %s" % version
+        print "This plugin checks HP Array with the hpacucli command"
+        print ""
+        print "Usage: %s " % argv[0]
+        print "Usage: %s [--help]" % argv[0]
+        print "Usage: %s [--version]" % argv[0]
+        print "Usage: %s [--path </path/to/hpacucli>]" % argv[0]
+        print "Usage: %s [--no-perfdata]" % argv[0]
+        print "Usage: %s [--no-longoutput]" % argv[0]
+        print  ""
+
+
+def error(errortext):
+        print "* Error: %s" % errortext
+        print_help()
+        print "* Error: %s" % errortext
+        exit(unknown)
+
+def debug( debugtext ):
+        global debugging
+        if debugging:
+                print  debugtext
+
+
+'''runCommand: Runs command from the shell prompt. Exit Nagios style if unsuccessful'''
+def runCommand(command):
+  proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE,)
+  stdout, stderr = proc.communicate('through stdin to stdout')
+  if proc.returncode > 0:
+    print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
+    if proc.returncode == 127: # File not found, lets print path
+        path=getenv("PATH")
+        print "Check if your path is correct %s" % (path)
+    if stderr.find('Password:') == 0 and command.find('sudo') == 0:
+      print "Check if user is in the sudoers file"
+    if stderr.find('sorry, you must have a tty to run sudo') == 0 and command.find('sudo') == 0:
+      print "Please remove 'requiretty' from /etc/sudoers"
+    exit(unknown)
+  else:
+    return stdout
+
+
+
+def end():
+	global summary
+	global longserviceoutput
+	global perfdata
+	global nagios_status
+	global show_longserviceoutput
+	global show_perfdata
+	message = "%s - %s" % ( state[nagios_status], summary)
+	if show_perfdata:
+		message = "%s | %s" % ( message, perfdata)
+	if show_longserviceoutput:
+		message = "%s\n%s" % ( message, longserviceoutput)
+	if nagios_server is not None:
+		pass
+	print message
+	if nagios_status < 0:
+		nagios_status = unknown
+	exit(nagios_status)
+
+def add_perfdata(text):
+        global perfdata
+        text = text.strip()
+        perfdata = perfdata + " %s " % (text)
+
+def add_long(text):
+        global longserviceoutput
+        longserviceoutput = longserviceoutput + text + '\n'
+
+def add_summary(text):
+	global summary
+	summary = summary + text
+
+def set_path(path):
+	current_path = getenv('PATH')
+	if current_path.find('C:\\') > -1: # We are on this platform
+		if path == '':
+			path = ";C:\Program Files\Hewlett-Packard\Sanworks\Element Manager for StorageWorks HSV"
+			path = path + ";C:\Program Files (x86)\Compaq\Hpacucli\Bin"
+			path = path + ";C:\Program Files\Compaq\Hpacucli\Bin"
+		else: path = ';' + path
+	else:	# Unix/Linux, etc
+		if path == '': path = ":/usr/sbin"
+		else: path = ':' + path
+	current_path = "%s%s" % (current_path,path)
+	environ['PATH'] = current_path
+
+
+
+
+def check(object, field, valid_states = ['OK']):
+	state = -1
+	global nagios_status
+	if object.has_key(field):
+		if object[field] in valid_states:
+			state = ok
+		else:
+			state = warning
+	nagios_status = max(nagios_status, state)
+	return state
+
+
+
+if __name__ == '__main__':
+	main()
