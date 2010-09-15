@@ -71,7 +71,7 @@ for session in parsedSessions:
 	total_size = total_size + size
 	total_sessions += 1
 
-print "Everything is ok | errors=%d warnings=%d size=%dB num_sessions=%dc" % (total_errors,total_warnings,total_size,total_sessions)
+print "Everything is ok | 'errors'=%d 'warnings'=%d 'size'=%dB 'num_sessions'=%dc" % (total_errors,total_warnings,total_size,total_sessions)
 
 
 
