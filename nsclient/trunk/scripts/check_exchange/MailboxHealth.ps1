@@ -30,14 +30,14 @@
 #
 # On the check_nrpe command include the -t 20, since it takes some time to load
 # the Exchange cmdlet's.
-Write-Host "Test"
 Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
 
 $NagiosStatus = "0"
 $NagiosDescription = ""
-
+$LongOutput = ""
 ForEach ($DataBase in Get-MailboxDatabase) {
 	ForEach ($Status in Get-MailboxDatabaseCopyStatus -Identity $DataBase.Name) {
+		$LongOutput = $LongOutput + $Status.Name + " is " + $Status.Status + "`n"
 		switch ($Status.Status) {
 			"Failed" { 
 				$NagiosStatus = "2"
@@ -99,5 +99,7 @@ if ($NagiosStatus -eq "2") {
 } else {
 	Write-Host "OK: All Mailbox Databases are mounted and healthy."
 }
+Write-Host $LongOutput
 
 exit $NagiosStatus
+

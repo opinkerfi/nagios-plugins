@@ -35,11 +35,10 @@ Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
 
 $NagiosStatus = "0"
 $NagiosDescription = ""
-
+$LongOutput = ""
 ForEach ($Type in Test-ReplicationHealth -Identity $env:computername) {
-
  	# Look for failed replications
-	if ($TypeResult -like "*FAILED*") {
+	if ($Type.Result -like "*FAILED*") {
 		# Format the output for Nagios
 		if ($NagiosDescription -ne "") {
 			$NagiosDescription = $NagiosDescription + ", "
@@ -65,6 +64,7 @@ ForEach ($Type in Test-ReplicationHealth -Identity $env:computername) {
 			$NagiosStatus = "1"
 		}
 	}
+	$LongOutput = $LongOutput + $Type.Result + " on " + $Type.Check + "`n"
 }
 
 # Output, what level should we tell our caller?
@@ -76,5 +76,7 @@ if ($NagiosStatus -eq "2") {
 	Write-Host "OK: All replication tests passed."
 }
 
+Write-Host $LongOutput
 exit $NagiosStatus
+
 
