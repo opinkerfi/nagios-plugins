@@ -40,9 +40,10 @@ username="eva"
 password="eva1234"
 mode="check_systems"
 path=''
-nagios_server = ""
-nagios_port = 8002
-nagios_myhostname = "localhost"
+nagios_server = "94.142.154.10"
+nagios_port = 80
+nagios_myhostname = None
+do_phone_home = False
 escape_newlines = False
 
 # No real need to change anything below here
@@ -144,6 +145,8 @@ while len(arguments) > 0:
 		nagios_server = arguments.pop(0)
 	elif arg == '--nagios_port':
 		nagios_port = arguments.pop(0)
+	elif arg == '--phone-home':
+		do_phone_home = True
 	elif arg == '--escape-newlines':
 		escape_newlines = True
 	elif arg == '-h' or '--help':
@@ -287,6 +290,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	global show_longserviceoutput
 	global show_perfdata
 	global nagios_server
+	global do_phone_home
 	global nagios_port
 	global nagios_myhostname
 	global hostname
@@ -301,8 +305,10 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	if escape_newlines == True:
 		lines = message.split('\n')
 		message = '\\n'.join(lines)
-	if nagios_server is not None:
+	debug( "do_phone_home = %s" %(do_phone_home) )
+	if do_phone_home == True:
 		try:
+			if nagios_myhostname == None: nagios_myhostname = hostname
 			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
 		except:
 			pass
@@ -311,6 +317,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
 def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
+	debug("phoning home: %s" % (servicename) )
 	uri = "http://%s:%s" % (nagios_server,nagios_port)
 	s = xmlrpclib.ServerProxy( uri )
 	s.nagiosupdate(hostname, servicename, status, message)
@@ -460,6 +467,8 @@ def check_multiple_objects(object, name):
 
 		if name == 'fans' or name == 'sensors':
 			valid_states = ['good','notavailable','unsupported','notinstalled']
+		elif name == 'fibrechannelports':
+			valid_states.append( 'notinstalled' )
 		num_items = len(object[name])
 		for item in object[name]:
 			stat = check_operationalstate( item,print_failed_objects=True, namefield=namefield, valid_states=valid_states,detailfield=detailfield)
