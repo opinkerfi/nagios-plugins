@@ -46,6 +46,7 @@ nagios_myhostname = None
 do_phone_home = False
 escape_newlines = False
 check_system = None # By default check all systems
+proxyserver = None
 
 # No real need to change anything below here
 version="1.0"
@@ -73,7 +74,7 @@ from sys import exit
 from sys import argv
 from os import getenv,putenv,environ
 import subprocess
-import xmlrpclib
+import xmlrpclib,httplib
 import socket
 socket.setdefaulttimeout(5) 
 
@@ -150,6 +151,8 @@ while len(arguments) > 0:
 		check_system = arguments.pop(0)
 	elif arg == '--phone-home':
 		do_phone_home = True
+	elif arg == '--proxy':
+		proxyserver = arguments.pop(0)
 	elif arg == '--escape-newlines':
 		escape_newlines = True
 	elif arg == '-h' or '--help':
@@ -320,15 +323,35 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 			if nagios_myhostname == None: nagios_myhostname = hostname
 			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
 		except:
-			pass
+			raise
 	print message
 	exit(nagios_state)
+class ProxiedTransport(xmlrpclib.Transport):
+    def set_proxy(self, proxy):
+        self.proxy = proxy
+    def make_connection(self, host):
+        self.realhost = host
+        h = httplib.HTTP(self.proxy)
+        return h
+    def send_request(self, connection, handler, request_body):
+        connection.putrequest("POST", 'http://%s%s' % (self.realhost, handler))
+    def send_host(self, connection, host):
+        connection.putheader('Host', self.realhost)
+
+
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
 def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
 	debug("phoning home: %s" % (servicename) )
 	uri = "http://%s:%s" % (nagios_server,nagios_port)
-	s = xmlrpclib.ServerProxy( uri )
+	
+	global proxyserver
+	if proxyserver != None:
+		p = ProxiedTransport()
+		p.set_proxy(proxyserver)
+		s = xmlrpclib.Server( uri, transport=p ) 
+	else:
+		s = xmlrpclib.ServerProxy( uri )
 	s.nagiosupdate(hostname, servicename, status, message)
 	return 0
 
