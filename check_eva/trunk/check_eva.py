@@ -71,7 +71,7 @@ valid_modes = ( "check_systems", "check_controllers", "check_diskgroups","check_
 
 from sys import exit
 from sys import argv
-from os import getenv,putenv
+from os import getenv,putenv,environ
 import subprocess
 import xmlrpclib
 import socket
@@ -178,7 +178,7 @@ def runCommand(command):
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-    if proc.returncode == 127: # File not found, lets print path
+    if proc.returncode == 127 or proc.returncode == 1: # File not found, lets print path
 	path=getenv("PATH")
 	print "Current Path: %s" % (path)
     exit(unknown)
@@ -596,11 +596,11 @@ def set_path():
 	current_path = getenv('PATH')
 	if path == '':
 		if current_path.find('C:\\') > -1: # We are on this platform
-			path = "C:\\Program Files\\Hewlett-Packard\\Sanworks\\Element Manager for StorageWorks HSV"
+			path = ";C:\\Program Files\\Hewlett-Packard\\Sanworks\\Element Manager for StorageWorks HSV"
 		else:
-			path = "/usr/local/bin"
-	current_path = "%s:%s" % (current_path,path)
-	putenv('PATH', current_path)
+			path = ":/usr/local/bin"
+	current_path = "%s%s" % (current_path,path)
+        environ['PATH'] = current_path
 set_path()
 
 

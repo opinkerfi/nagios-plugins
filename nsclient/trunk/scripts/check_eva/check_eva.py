@@ -40,10 +40,12 @@ username="eva"
 password="eva1234"
 mode="check_systems"
 path=''
-nagios_server = ""
-nagios_port = 8002
-nagios_myhostname = "localhost"
+nagios_server = "94.142.154.10"
+nagios_port = 80
+nagios_myhostname = None
+do_phone_home = False
 escape_newlines = False
+check_system = None # By default check all systems
 
 # No real need to change anything below here
 version="1.0"
@@ -69,7 +71,7 @@ valid_modes = ( "check_systems", "check_controllers", "check_diskgroups","check_
 
 from sys import exit
 from sys import argv
-from os import getenv,putenv
+from os import getenv,putenv,environ
 import subprocess
 import xmlrpclib
 import socket
@@ -77,7 +79,6 @@ socket.setdefaulttimeout(5)
 
 
 def print_help():
-	print broken
 	print "check_eva version %s" % version
 	print "This plugin checks HP EVA Array with the sssu command"
 	print ""
@@ -143,8 +144,12 @@ while len(arguments) > 0:
 		nagios_myhostname = arguments.pop(0)
 	elif arg == '--nagios_server':
 		nagios_server = arguments.pop(0)
-	elif arg == '--nagiosport':
+	elif arg == '--nagios_port':
 		nagios_port = arguments.pop(0)
+	elif arg == '--system':
+		check_system = arguments.pop(0)
+	elif arg == '--phone-home':
+		do_phone_home = True
 	elif arg == '--escape-newlines':
 		escape_newlines = True
 	elif arg == '-h' or '--help':
@@ -173,7 +178,7 @@ def runCommand(command):
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-    if proc.returncode == 127: # File not found, lets print path
+    if proc.returncode == 127 or proc.returncode == 1: # File not found, lets print path
 	path=getenv("PATH")
 	print "Current Path: %s" % (path)
     exit(unknown)
@@ -280,14 +285,21 @@ def run_sssu(system=None, command="ls system full"):
 			if not object.has_key(key):
 				value = ' '.join( tmp[2:] ).strip()
 				object[key] = value
-	#for i in objects:
-	#	print i['objectname']
+	# Check if we were instructed to check only one eva system
+	global check_system
+	if command == "ls system full" and check_system !=  None:
+		tmp_objects = []
+		for i in objects:
+			if i['objectname'] == check_system:
+				tmp_objects.append( i )
+		objects = tmp_objects
 	return objects
 
 def end(summary,perfdata,longserviceoutput,nagios_state):
 	global show_longserviceoutput
 	global show_perfdata
 	global nagios_server
+	global do_phone_home
 	global nagios_port
 	global nagios_myhostname
 	global hostname
@@ -302,8 +314,10 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	if escape_newlines == True:
 		lines = message.split('\n')
 		message = '\\n'.join(lines)
-	if nagios_server is not None:
+	debug( "do_phone_home = %s" %(do_phone_home) )
+	if do_phone_home == True:
 		try:
+			if nagios_myhostname == None: nagios_myhostname = hostname
 			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
 		except:
 			pass
@@ -312,6 +326,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
 def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
+	debug("phoning home: %s" % (servicename) )
 	uri = "http://%s:%s" % (nagios_server,nagios_port)
 	s = xmlrpclib.ServerProxy( uri )
 	s.nagiosupdate(hostname, servicename, status, message)
@@ -461,6 +476,8 @@ def check_multiple_objects(object, name):
 
 		if name == 'fans' or name == 'sensors':
 			valid_states = ['good','notavailable','unsupported','notinstalled']
+		elif name == 'fibrechannelports':
+			valid_states.append( 'notinstalled' )
 		num_items = len(object[name])
 		for item in object[name]:
 			stat = check_operationalstate( item,print_failed_objects=True, namefield=namefield, valid_states=valid_states,detailfield=detailfield)
@@ -579,11 +596,11 @@ def set_path():
 	current_path = getenv('PATH')
 	if path == '':
 		if current_path.find('C:\\') > -1: # We are on this platform
-			path = "C:\\Program Files\\Hewlett-Packard\\Sanworks\\Element Manager for StorageWorks HSV"
+			path = ";C:\\Program Files\\Hewlett-Packard\\Sanworks\\Element Manager for StorageWorks HSV"
 		else:
-			path = "/usr/local/bin"
-	current_path = "%s:%s" % (current_path,path)
-	putenv('PATH', current_path)
+			path = ":/usr/local/bin"
+	current_path = "%s%s" % (current_path,path)
+        environ['PATH'] = current_path
 set_path()
 
 
