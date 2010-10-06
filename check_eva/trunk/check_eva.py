@@ -45,6 +45,7 @@ nagios_port = 80
 nagios_myhostname = None
 do_phone_home = False
 escape_newlines = False
+check_system = None # By default check all systems
 
 # No real need to change anything below here
 version="1.0"
@@ -145,6 +146,8 @@ while len(arguments) > 0:
 		nagios_server = arguments.pop(0)
 	elif arg == '--nagios_port':
 		nagios_port = arguments.pop(0)
+	elif arg == '--system':
+		check_system = arguments.pop(0)
 	elif arg == '--phone-home':
 		do_phone_home = True
 	elif arg == '--escape-newlines':
@@ -282,8 +285,14 @@ def run_sssu(system=None, command="ls system full"):
 			if not object.has_key(key):
 				value = ' '.join( tmp[2:] ).strip()
 				object[key] = value
-	#for i in objects:
-	#	print i['objectname']
+	# Check if we were instructed to check only one eva system
+	global check_system
+	if command == "ls system full" and check_system !=  None:
+		tmp_objects = []
+		for i in objects:
+			if i['objectname'] == check_system:
+				tmp_objects.append( i )
+		objects = tmp_objects
 	return objects
 
 def end(summary,perfdata,longserviceoutput,nagios_state):
