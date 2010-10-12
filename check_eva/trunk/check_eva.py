@@ -530,7 +530,8 @@ def check_controllers():
 		nagios_state = max( check_operationalstate(i), nagios_state )
 
 		# Lets add to the summary
-		summary = summary + " %s/%s=%s " %(systemname,controllername, i['operationalstate'])
+		if  i['operationalstate'] != 'good':
+			summary = summary + " %s/%s=%s " %(systemname,controllername, i['operationalstate'])
 		
 		# Lets get some perfdata
 		interesting_fields = "controllermainmemory"
