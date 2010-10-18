@@ -467,6 +467,7 @@ if ( $opt_i eq "ALL" ) {
       $perf  = sprintf "Sent=%sBits/s;Dropped=%sBits/s",$postRate,$dropRate;
       $state   = 0;
     }
+    $perf  = sprintf "Sent=%s Dropped=%s;%s;%s",$postRate,$dropRate,$warn,$crit;
   } else {
     #---------------------------------------------------------------------------
     # Check for all interfaces and one class
@@ -504,6 +505,7 @@ if ( $opt_i eq "ALL" ) {
       exit 3;
     }
     $perf  = sprintf "Sent=%sBits/s;Dropped=%sBits/s",$postRate,$dropRate;
+    $perf  = sprintf "Sent=%s Dropped=%s;%s;%s",$postRate,$dropRate,$warn,$crit;
     if ( $dropRate >= $crit ) {
       $short = "QOS: Total drop rate for class $opt_m ($dropRate bits/s) is above critical threshold ($crit bits/s): CRITICAL";
       $state = 2;
@@ -548,6 +550,7 @@ if ( $opt_i eq "ALL" ) {
       $dropRate = 0;
     }
     $perf  = sprintf "Sent=%sBits/s;Dropped=%sBits/s",$postRate,$dropRate;
+    $perf  = sprintf "Sent=%s Dropped=%s;%s;%s",$postRate,$dropRate,$warn,$crit;
     if ( $dropRate >= $crit ) {
       $short = "QOS: Total drop rate on $int ($dropRate bits/s) is above critical threshold ($crit bits/s): CRITICAL";
       $state = 2;
@@ -586,6 +589,7 @@ if ( $opt_i eq "ALL" ) {
       $dropRate = 0;
     }
     $perf  = sprintf "Sent=%sBits/s;Dropped=%sBits/s",$postRate,$dropRate;
+    $perf  = sprintf "Sent=%s Dropped=%s;%s;%s",$postRate,$dropRate,$warn,$crit;
     if ( $dropRate >= $crit ) {
       $short = "QOS: Drop rate for $opt_m on $opt_i ($dropRate bits/s) is above critical threshold ($crit bits/s): CRITICAL";
       $state = 2;
