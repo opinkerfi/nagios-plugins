@@ -308,6 +308,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	global hostname
 	global mode
 	global escape_newlines
+	global check_system
 
 	message = "%s - %s" % ( state[nagios_state], summary)
 	if show_perfdata:
@@ -321,7 +322,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	if do_phone_home == True:
 		try:
 			if nagios_myhostname == None: nagios_myhostname = hostname
-			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
+			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode,system=check_system)
 		except:
 			raise
 	print message
@@ -341,8 +342,9 @@ class ProxiedTransport(xmlrpclib.Transport):
 
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
-def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
+def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None,system=None):
 	debug("phoning home: %s" % (servicename) )
+	servicename = str(servicename) + str(system)
 	uri = "http://%s:%s" % (nagios_server,nagios_port)
 	
 	global proxyserver
