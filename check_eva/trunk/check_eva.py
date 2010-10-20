@@ -321,7 +321,13 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	debug( "do_phone_home = %s" %(do_phone_home) )
 	if do_phone_home == True:
 		try:
-			if nagios_myhostname == None: nagios_myhostname = hostname
+			if nagios_myhostname is None:
+				if environ.has_key( 'HOSTNAME' ):
+					nagios_myhostname = environ['HOSTNAME']
+				elif environ.has_key( 'COMPUTERNAME' ):
+					nagios_myhostname = environ['COMPUTERNAME']
+				else:
+					nagios_myhostname = hostname
 			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode,system=check_system)
 		except:
 			raise
@@ -344,7 +350,8 @@ class ProxiedTransport(xmlrpclib.Transport):
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
 def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None,system=None):
 	debug("phoning home: %s" % (servicename) )
-	servicename = str(servicename) + str(system)
+	if system is not None:
+		servicename = str(servicename) + str(system)
 	uri = "http://%s:%s" % (nagios_server,nagios_port)
 	
 	global proxyserver
