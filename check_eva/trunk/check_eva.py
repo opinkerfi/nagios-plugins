@@ -68,7 +68,7 @@ state[unknown] = "Unknown"
 longserviceoutput="\n"
 perfdata=""
 
-valid_modes = ( "check_systems", "check_controllers", "check_diskgroups","check_disks", "check_diskshelfs")
+valid_modes = ( "check_systems", "check_controllers", "check_diskgroups","check_disks", "check_diskshelfs", "check_diskshelves")
 
 from sys import exit
 from sys import argv
@@ -155,7 +155,7 @@ while len(arguments) > 0:
 		proxyserver = arguments.pop(0)
 	elif arg == '--escape-newlines':
 		escape_newlines = True
-	elif arg == '-h' or '--help':
+	elif arg == '-h' or arg == '--help':
 		print_help()
 		exit(ok)
 	else:
@@ -206,6 +206,7 @@ def run_sssu(system=None, command="ls system full"):
 
 	commandstring = "sssu "
 	for i in commands: commandstring = commandstring + '"%s" '% i 
+	commandstring = 'cat "debug/%s"' % command
 	
 	#print mystring
 	#if command == "ls system full":
@@ -414,7 +415,11 @@ def get_longserviceoutput(object, interesting_fields):
 
 def check_operationalstate(object, print_failed_objects=False,namefield='objectname',detailfield='operationalstatedetail',statefield='operationalstate',valid_states=['good']):
 	if not object.has_key(detailfield): detailfield = statefield
-	if object['operationalstate'] not in valid_states:
+	if not object.has_key(statefield):
+		if print_failed_objects:
+			long("- Warning, %s does not have any '%s'" % ( object[namefield], statefield ) )
+		return warning
+	if object[statefield] not in valid_states:
 		if print_failed_objects:
 			long("- Warning, %s=%s (%s)\n" % ( object[namefield], object['operationalstate'], object[detailfield] ))
 		return warning
@@ -441,12 +446,16 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 	summary = "%s objects found " % len(objects)
         for i in objects:
                 systemname = i['systemname']
+		
 		# Some versions of commandview use "objectname" instead of namefield
 		if i.has_key( namefield ):
 			objectname = i[namefield]
 		else:
 			objectname = i['objectname']
-                
+                # Some versions of CV also return garbage objects, luckily it is easy to find these
+		if i.has_key('objecttype') and i['objecttype'] == 'typenotset':
+			long("Object %s was skipped because objecttype == typenotset\n" % objectname )
+			continue
 		# Lets see if this object is working
                 nagios_state = max( check_operationalstate(i), nagios_state )
 
@@ -539,12 +548,19 @@ def check_controllers():
 			controllers.append( controller )
 	for i in controllers:
 		systemname = i['systemname']
-		controllername = i['controllername']
+		if i.has_key('controllername'):
+			controllername = i['controllername']
+		else:
+			controllername = i['objectname']
 		# Lets see if this controller is working
 		nagios_state = max( check_operationalstate(i), nagios_state )
 
 		# Lets add to the summary
-		if  i['operationalstate'] != 'good':
+		if not i.has_key('operationalstate'):
+			summary = summary + " %s does not have any operationalstate" % controllername
+			nagios_state = max( unknown, nagios_state )
+			continue
+		elif  i['operationalstate'] != 'good':
 			summary = summary + " %s/%s=%s " %(systemname,controllername, i['operationalstate'])
 		
 		# Lets get some perfdata
@@ -660,7 +676,7 @@ elif mode == 'check_diskgroups':
 	check_generic(command=command,namefield=namefield,longserviceoutputfields=longserviceoutputfields, perfdata_fields=perfdata_fields)
 elif mode == 'check_disks':
 	check_generic(command="ls disk full",namefield="objectname")
-elif mode == 'check_diskshelfs':
+elif mode == 'check_diskshelfs' or mode == 'check_diskshelves':
         check_generic(command="ls diskshelf full",namefield="diskshelfname",longserviceoutputfields=[], perfdata_fields=[])
 else:
 	print "* Error: Mode %s not found" % mode
