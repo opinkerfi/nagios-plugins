@@ -46,6 +46,7 @@ nagios_myhostname = None
 do_phone_home = False
 escape_newlines = False
 check_system = None # By default check all systems
+proxyserver = None
 
 # No real need to change anything below here
 version="1.0"
@@ -73,7 +74,7 @@ from sys import exit
 from sys import argv
 from os import getenv,putenv,environ
 import subprocess
-import xmlrpclib
+import xmlrpclib,httplib
 import socket
 socket.setdefaulttimeout(5) 
 
@@ -84,16 +85,14 @@ def print_help():
 	print ""
 	print "Usage: %s [OPTIONS]" % argv[0]
 	print "OPTIONS:"
-	print  " --host <host>"
-	print  " --username <user>"
-	print  " --password <password"
-	print  " --path </path/to/sssu>"
-	print  " --mode <mode> "
-	print  " --system <systemname>"
-	print  " --phone-home [--nagios_myhostname <hostname>] [--nagios_port <port>]"
-	print  " --test"
-	print  " --debug"
-	print  " --help"
+	print  " [--host <host>]"
+	print  " [--username <user>]"
+	print  " [--password <password]"
+	print  " [--path </path/to/sssu>]"
+	print  " [--mode <mode>] "
+	print  " [--test]"
+	print  " [--debug]"
+	print  " [--help]"
 	print  ""
 	print  " Valid modes are: %s" % ', '.join(valid_modes)
 	print  ""
@@ -152,6 +151,8 @@ while len(arguments) > 0:
 		check_system = arguments.pop(0)
 	elif arg == '--phone-home':
 		do_phone_home = True
+	elif arg == '--proxy':
+		proxyserver = arguments.pop(0)
 	elif arg == '--escape-newlines':
 		escape_newlines = True
 	elif arg == '-h' or '--help':
@@ -307,6 +308,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	global hostname
 	global mode
 	global escape_newlines
+	global check_system
 
 	message = "%s - %s" % ( state[nagios_state], summary)
 	if show_perfdata:
@@ -319,18 +321,46 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	debug( "do_phone_home = %s" %(do_phone_home) )
 	if do_phone_home == True:
 		try:
-			if nagios_myhostname == None: nagios_myhostname = hostname
-			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode)
+			if nagios_myhostname is None:
+				if environ.has_key( 'HOSTNAME' ):
+					nagios_myhostname = environ['HOSTNAME']
+				elif environ.has_key( 'COMPUTERNAME' ):
+					nagios_myhostname = environ['COMPUTERNAME']
+				else:
+					nagios_myhostname = hostname
+			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode,system=check_system)
 		except:
-			pass
+			raise
 	print message
 	exit(nagios_state)
+class ProxiedTransport(xmlrpclib.Transport):
+    def set_proxy(self, proxy):
+        self.proxy = proxy
+    def make_connection(self, host):
+        self.realhost = host
+        h = httplib.HTTP(self.proxy)
+        return h
+    def send_request(self, connection, handler, request_body):
+        connection.putrequest("POST", 'http://%s%s' % (self.realhost, handler))
+    def send_host(self, connection, host):
+        connection.putheader('Host', self.realhost)
+
+
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
-def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None):
+def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None,system=None):
 	debug("phoning home: %s" % (servicename) )
+	if system is not None:
+		servicename = str(servicename) + str(system)
 	uri = "http://%s:%s" % (nagios_server,nagios_port)
-	s = xmlrpclib.ServerProxy( uri )
+	
+	global proxyserver
+	if proxyserver != None:
+		p = ProxiedTransport()
+		p.set_proxy(proxyserver)
+		s = xmlrpclib.Server( uri, transport=p ) 
+	else:
+		s = xmlrpclib.ServerProxy( uri )
 	s.nagiosupdate(hostname, servicename, status, message)
 	return 0
 
@@ -509,7 +539,8 @@ def check_controllers():
 		nagios_state = max( check_operationalstate(i), nagios_state )
 
 		# Lets add to the summary
-		summary = summary + " %s/%s=%s " %(systemname,controllername, i['operationalstate'])
+		if  i['operationalstate'] != 'good':
+			summary = summary + " %s/%s=%s " %(systemname,controllername, i['operationalstate'])
 		
 		# Lets get some perfdata
 		interesting_fields = "controllermainmemory"
