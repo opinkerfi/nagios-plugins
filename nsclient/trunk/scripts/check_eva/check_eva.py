@@ -48,6 +48,8 @@ escape_newlines = False
 check_system = None # By default check all systems
 proxyserver = None
 
+server_side_troubleshooting = False # set to true, if you do not have sssu binary handy
+
 # No real need to change anything below here
 version="1.0"
 ok=0
@@ -206,7 +208,9 @@ def run_sssu(system=None, command="ls system full"):
 
 	commandstring = "sssu "
 	for i in commands: commandstring = commandstring + '"%s" '% i 
-	commandstring = 'cat "debug/%s"' % command
+	global server_side_troubleshooting
+	if server_side_troubleshooting == True:	
+		commandstring = 'cat "debug/%s"' % command
 	
 	#print mystring
 	#if command == "ls system full":
