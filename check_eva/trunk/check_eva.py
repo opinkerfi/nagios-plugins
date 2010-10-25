@@ -492,8 +492,8 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 		nagios_state = max(nagios_state, check_multiple_objects(i, 'fibrechannelports'))
 		nagios_state = max(nagios_state, check_multiple_objects(i, 'modules'))
                 for x in longserviceoutputfields:
-												if i.has_key( x ):
-                        	long( "- %s = %s\n" % (x, i[x]))
+			if i.has_key( x ):
+				long( "- %s = %s\n" % (x, i[x]))
 
         end(summary,perfdata,longserviceoutput,nagios_state)
 
