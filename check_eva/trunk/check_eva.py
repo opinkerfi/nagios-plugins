@@ -441,7 +441,11 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 	summary = "%s objects found " % len(objects)
         for i in objects:
                 systemname = i['systemname']
-                objectname = i[namefield]
+		# Some versions of commandview use "objectname" instead of namefield
+		if i.has_key( namefield ):
+			objectname = i[namefield]
+		else:
+			objectname = i['objectname']
                 
 		# Lets see if this object is working
                 nagios_state = max( check_operationalstate(i), nagios_state )
