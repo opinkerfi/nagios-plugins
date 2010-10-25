@@ -416,7 +416,7 @@ def check_operationalstate(object, print_failed_objects=False,namefield='objectn
 	if not object.has_key(detailfield): detailfield = statefield
 	if object['operationalstate'] not in valid_states:
 		if print_failed_objects:
-			long("Warning, %s=%s (%s)\n" % ( object[namefield], object['operationalstate'], object[detailfield] ))
+			long("- Warning, %s=%s (%s)\n" % ( object[namefield], object['operationalstate'], object[detailfield] ))
 		return warning
 	debug( "OK, %s=%s (%s)\n" % ( object[namefield], object['operationalstate'], object[detailfield] ) )
 	return ok
