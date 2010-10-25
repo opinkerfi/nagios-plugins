@@ -550,6 +550,7 @@ def check_controllers():
 		for controller in result:
 			controller['systemname'] = i['objectname']
 			controllers.append( controller )
+	summary = "%s objects found " % len(controllers)	
 	for i in controllers:
 		systemname = i['systemname']
 		if i.has_key('controllername'):
@@ -561,7 +562,7 @@ def check_controllers():
 
 		# Lets add to the summary
 		if not i.has_key('operationalstate'):
-			summary = summary + " %s does not have any operationalstate" % controllername
+			summary = summary + " %s does not have any operationalstate " % controllername
 			nagios_state = max( unknown, nagios_state )
 			continue
 		elif  i['operationalstate'] != 'good':
