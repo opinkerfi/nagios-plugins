@@ -196,7 +196,7 @@ my $args;
 #Si on est en local inutile de faire du nrpe
 if($opt_H ne "localhost" and $opt_H ne "127.0.0.1") {
     #$cmd = "ssh $opt_u\@$opt_H '$cmd'";
-    $cmd = "/usr/lib64/nagios/plugins/check_nrpe -H $opt_H -c get_disks";
+    $cmd = "/usr/lib/nagios/plugins/check_nrpe -H $opt_H -c get_disks";
     #$cmd = "cat /tmp/df";
     #print "$cmd";
 }
