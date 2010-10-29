@@ -1,6 +1,8 @@
 #!/bin/sh
 
 
+export PATH=$PATH:/usr/lib/nagios/plugins/:/usr/lib64/nagios/plugins/
+
 
 # Nagios exit codes
 OK=0
@@ -59,7 +61,15 @@ do
 done
 
 LOCALTIME=`/bin/date +%s`
-REMOTETIME=`/usr/lib/nagios/plugins/check_nrpe -H $hostaddress -c get_time`
+REMOTETIME=`check_nrpe -H $hostaddress -c get_time 2>&1`
+RESULT=$?
+
+if [ $RESULT -gt 0 ]; then
+	echo "Unknown - Could not execute check_nrpe"
+	echo "Error was:"
+	echo $REMOTETIME
+	exit 3
+fi
 
 for i in $warning $critical ; do
 	if [ ! $i -ge 0 ]; then
