@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check HP EVA Disk Systems
 Name:		nagios-okplugin-check_eva
-Version:	0.0.2
+Version:	AUTOVERSION
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System

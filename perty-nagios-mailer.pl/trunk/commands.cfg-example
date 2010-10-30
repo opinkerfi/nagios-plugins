@@ -1,5 +1,0 @@
-define command{
-        command_name    perty-notify-service-by-email
-        command_line    $USER1$/ok/perty-nagios-mailer.pl "$CONTACTEMAIL$" "$LONGDATETIME$" "$NOTIFICATIONTYPE$" "$HOSTALIAS$" "$HOSTADDRESS$" "$SERVICEDESC$" "$SERVICESTATE$" "$SERVICEOUTPUT$" 
-        }
-

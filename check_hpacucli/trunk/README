@@ -1,0 +1,53 @@
+= check_hpacucli =
+Checks the raid status on a HP Array using hpacucli. to check the following:
+
+ * Controller Status
+ * Controller Cache Status
+ * Logical disk health (raid status)
+ * Physical disk health
+
+== Download ==
+check_hpacucli.py depends on the hpacucli binary which comes with the HP Proliant Support Pack (PSP). The PSP can be downloaded [http://downloads.linux.hp.com/SDR/downloads/ProLiantSupportPack here].
+
+You can get check_hpacucly.py directly from our subversion repo [http://opensource.is/trac/browser/nagios-plugins/check_hpacucli/trunk here]
+
+== help page ==
+{{{
+# python check_hpacucli.py  --help
+check_hpacucli version 1.0
+This plugin checks HP Array with the hpacucli command
+
+Usage: check_hpacucli.py 
+Usage: check_hpacucli.py [--help]
+Usage: check_hpacucli.py [--version]
+Usage: check_hpacucli.py [--path </path/to/hpacucli>]
+Usage: check_hpacucli.py [--no-perfdata]
+Usage: check_hpacucli.py [--no-longoutput]
+
+
+}}}
+
+== Example output ==
+{{{
+# ./check_hparray --all
+OK - Found 1 controllers, 2 logicaldisks. 8 physicaldisks.  | 
+
+Smart Array P400 in Slot 1
+- Controller Status: OK (sn: P61620F9VV6FX2)
+- Cache Status: OK (sn: PA82C0H9VV4695)
+
+Checking logical Disks:
+- Logical Drive: 1 (/boot 101 MB) = OK
+- Logical Drive: 2 (None) = OK
+
+Checking Physical Disks:
+- physicaldrive 2I:1:1, SAS, 146 GB = OK
+- physicaldrive 2I:1:2, SAS, 146 GB = OK
+- physicaldrive 1I:1:5, SAS, 146 GB = OK
+- physicaldrive 1I:1:6, SAS, 146 GB = OK
+- physicaldrive 1I:1:7, SAS, 146 GB = OK
+- physicaldrive 1I:1:8, SAS, 146 GB = OK
+- physicaldrive 2I:1:3, SAS, 146 GB = OK
+- physicaldrive 2I:1:4, SAS, 146 GB = OK
+}}}
+
