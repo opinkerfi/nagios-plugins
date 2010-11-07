@@ -1,28 +1,12 @@
 #!/bin/sh
 
-
-IPS=`fping -a -g $1 2>/dev/nul`
-if [ $? -gt 2 ]; then
-	echo failed to run fping
-	exit 1
-fi
+HOST=$1
 
 
-#addgroup --group misc --alias "Misc hosts"
+PORTS="3389 22 80 445 5666 1433";
 
-for ip in $IPS; do
-	# Check if this host already exists
-	grep -qw $ip /var/log/nagios/objects.cache
-	if [ $? -eq 0 ]; then
-		continue
-	fi
-	RES=`host $ip`
-	if [ $? -gt 0 ]; then
-		HOSTN=$ip
-	else
-		HOSTN=`echo $RES | head -n 1 | sed 's/.*name pointer //'`
-	fi
-	echo $ip = $HOSTN
-	addhost --host $HOSTN --ip $ip --group misc
+for i in $PORTS; do
+	check_tcp -H $HOST -p $i >/dev/null 2>&1 && echo Port $i=yes || echo Port $i=no
 done
-
+echo -n "Checking NRPE Connectivity: "
+check_nrpe -H $HOST 
