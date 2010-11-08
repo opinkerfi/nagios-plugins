@@ -20,9 +20,9 @@ for ip in $IPS; do
 	if [ $? -gt 0 ]; then
 		HOSTN=$ip
 	else
-		HOSTN=`echo $RES | head -n 1 | sed 's/.*name pointer //'`
+		HOSTN=`echo $RES | head -n 1 | sed 's/.*name pointer //' | sed 's/\.$//'`
 	fi
 	echo $ip = $HOSTN
-	addhost --host $HOSTN --ip $ip --group misc
+	addhost --host $HOSTN --ip $ip --group misc --templates autodiscover
 done
 
