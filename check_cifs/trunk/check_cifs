@@ -18,7 +18,6 @@
 
 use strict;
 use Nagios::Plugin;
-use Data::Dumper;
 
 
 # Create the Nagios plugin object
