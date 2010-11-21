@@ -1,34 +1,81 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl -w
 #
 # This script will check MSSQL Database size via check_nrpe and NSclient. returns performance data in Nagios format
 # Author Pall Sigurdsson <palli@opensource.is>
 #
 
-$HOSTNAME=$ARGV[0];
+use strict;
+use Nagios::Plugin;
 
 
-$databases = `/usr/lib/nagios/plugins/check_nrpe -H $HOSTNAME -t 60 -c listCounterInstances -a "SQLServer:Databases"`;
-@array1 = split(/\,/, $databases);
+my $np = Nagios::Plugin->new(
+	usage => "Usage: %s <hostname>" );
+
+$np->add_arg(
+	spec => 'debug|d=i',
+	help => '-d, --debug=INTEGER',
+);
+
+$np->getopts;
+
+my $NRPECMD = "/usr/lib/nagios/plugins/check_nrpe";
+
+if (@ARGV < 1) {
+	usage();
+	exit 3;
+}
+
+my $HOSTNAME=$ARGV[0];
 
 
-#[root@nagios ~]# check_nrpe -H $HOSTNAME -c CheckCounter -a "Counter:Vanskilaskra=\SQLServer:Databases(Vanskilaskra)\Data File(s) Size (KB)"# OK all counters within bounds.|'Vanskilaskra'=30996480;0;0; 
-$num_databases = 0;
-$perfdata = "";
-foreach $database (@array1)
+my $databases = nrpeexec("-H $HOSTNAME -t 60 -c listCounterInstances -a 'SQLServer:Databases'");
+my @array1 = split(/\,/, $databases);
+
+
+my $num_databases = 0;
+foreach my $database (@array1)
 {
 	# Strip whitespace
 	$database =~ s/^\s*(.*?)\s*$/$1/;
 
 	# Call check_nrpe
-	$dbSize = `/usr/lib/nagios/plugins/check_nrpe -H $HOSTNAME -t 60 -c CheckCounter -a 'Counter:$database=\\SQLServer:Databases($database)\\Data File(s) Size (KB)'`;
+	my $dbSize = nrpeexec("-H $HOSTNAME -t 60 -c CheckCounter -a 'Counter:$database=\\SQLServer:Databases($database)\\Data File(s) Size (KB)'");
 
 	# Strip everything but the performance data
 	$dbSize =~ s/^.*\|(.*?)$/$1/;
 	chomp($dbSize);
-	$perfdata = $perfdata . " " . $dbSize;
+	$np->add_perfdata($dbSize);
 	$num_databases = $num_databases + 1;
-
-
 }
 
-print "$num_databases databases found in $HOSTNAME | $perfdata \n";
+$np->nagios_exit( OK, "$num_databases databases found in $HOSTNAME");
+
+
+
+sub usage {
+	print <<"	EOUSAGE";
+Usage $0 <hostname>
+	EOUSAGE
+}
+
+
+
+# Execute NRPE with some error handling
+sub nrpeexec {
+	my @args = @_;
+
+	my $output = '';
+	if (open NRPE, "$NRPECMD " . join(' ',@args) . ' 2>&1 |') {
+		$output .= $_ while(<NRPE>);
+		close NRPE;
+	}
+	my $ret = $? >> 8;
+	# No such file or directory
+	if ($ret == 127) {
+		$np->nagios_die("Cannot execute $NRPECMD command missing");
+	# Some other error
+	} elsif ($ret != 0) {
+		$np->nagios_die("Cannot execute $NRPECMD: $!");
+	}
+	return $output;
+}
