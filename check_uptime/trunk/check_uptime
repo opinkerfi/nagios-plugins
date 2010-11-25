@@ -22,7 +22,14 @@
 HOSTN="localhost" 	# By default check localhost
 CHECK_COMMAND="uptime" 	# Default command to check uptime
 
+# We we are not checking localhost, lets get remote uptime via NRPE
+if [ "$HOSTN" -ne "localhost" ]; then
+	export PATH=$PATH:/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins
+	CHECK_COMMAND="check_nrpe -H $HOSTN -c get_uptime"
+fi
 
+
+# Get the uptime, raise error if we are unsuccessful
 OUTPUT=`$CHECK_COMMAND`
 RESULT=$?
 
@@ -32,6 +39,7 @@ if [ $RESULT -gt 0 ]; then
 	exit 3
 fi
 
+# Parse the output from uptime command
 set -- $OUTPUT
 if [ $4 == 'min(s),' ]; then
 	echo "Warning, $HOSTN uptime is $OUTPUT"
