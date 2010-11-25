@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright 2010, Pall Sigurdsson <palli@opensource.is>
 #
@@ -23,7 +23,7 @@ HOSTN="localhost" 	# By default check localhost
 CHECK_COMMAND="uptime" 	# Default command to check uptime
 
 # We we are not checking localhost, lets get remote uptime via NRPE
-if [ "$HOSTN" -ne "localhost" ]; then
+if [ "$HOSTN" != "localhost" ]; then
 	export PATH=$PATH:/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins
 	CHECK_COMMAND="check_nrpe -H $HOSTN -c get_uptime"
 fi
