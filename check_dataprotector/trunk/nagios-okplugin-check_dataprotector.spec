@@ -20,6 +20,7 @@ Nagios Plugins to monitor HP Dataprotector
 %prep
 %setup -q
 perl -pi -e "s|/usr/lib/|%{_libdir}/|g" nrpe.d/check_dataprotector.cfg
+perl -pi -e "s|/usr/lib64/|%{_libdir}/|g" nrpe.d/check_dataprotector.cfg
 
 %build
 
