@@ -1,7 +1,7 @@
 %define debug_package %{nil}
 
 Summary:	A Nagios plugin to compare time on remote host with localhost
-Name:		nagios-okplugin-time
+Name:		nagios-okplugin-check_time
 Version:	AUTOVERSION
 Release:	1%{?dist}
 License:	GPLv2+
@@ -15,7 +15,7 @@ Packager:	Pall Sigurdsson <palli@opensource.is>
 
 
 %description
-A Nagios plugin to compare time on remote host with localhos
+A Nagios plugin to compare time on remote host with localhost
 
 
 %prep
@@ -27,7 +27,7 @@ perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_time.cfg
 
 %install
 rm -rf %{buildroot}
-install -D -p -m 0755 check_time %{buildroot}%{_libdir}/nagios/plugins/check_time
+install -D -p -m 0755 check_time.sh %{buildroot}%{_libdir}/nagios/plugins/check_time.sh
 install -D -p -m 0755 nrpe.d/check_time.cfg %{buildroot}/etc/nrpe.d/check_time.cfg
 
 %clean
@@ -35,7 +35,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc README LICENSE
+#%doc README LICENSE
 %{_libdir}/nagios/plugins/*
 /etc/nrpe.d/check_time.cfg
 
