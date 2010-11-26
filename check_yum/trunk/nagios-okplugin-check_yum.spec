@@ -18,7 +18,8 @@ Nagios plugin to test for Yum updates on RedHat/CentOS Linux.
 
 %prep
 %setup -q
-perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_yum.cfg
+perl -pi -e "s|/usr/lib/|%{_libdir}/|g" nrpe.d/check_yum.cfg
+perl -pi -e "s|/usr/lib64/|%{_libdir}/|g" nrpe.d/check_yum.cfg
 
 %build
 
