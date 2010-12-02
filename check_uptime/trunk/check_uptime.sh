@@ -22,11 +22,44 @@
 HOSTN="localhost" 	# By default check localhost
 CHECK_COMMAND="uptime" 	# Default command to check uptime
 
+print_help() {
+      echo "$0 version $VERSION"
+      echo "This plugin checks uptime of local or remote host"
+      echo ""
+      echo "Usage: $0 [-H <host>]"
+      echo ""
+      echo "Example: Check uptime of a remote host"
+      echo "# $0 -H remotehost -s Enforcing"
+}
+
+# Parse arguments
+while [ $# -gt 0 ]
+do
+  case $1
+  in
+    -H)
+      HOSTN=$2
+      shift 2
+    ;;
+
+    *)
+      print_help ;
+      exit $UNKNOWN
+      ;;
+  esac
+done
+
+
+
+
 # We we are not checking localhost, lets get remote uptime via NRPE
 if [ "$HOSTN" != "localhost" ]; then
 	export PATH=$PATH:/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins
 	CHECK_COMMAND="check_nrpe -H $HOSTN -c get_uptime"
 fi
+
+
+
 
 
 # Get the uptime, raise error if we are unsuccessful
