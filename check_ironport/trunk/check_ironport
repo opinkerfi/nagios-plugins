@@ -15,8 +15,7 @@ PAR_WARN=$5
 PAR_CRIT=$6
 
 
-#STATUSFILE=/tmp/status.`echo $RANDOM$RANDOM|cut -c1-4`
-STATUSFILE=/tmp/xml.status
+STATUSFILE=/tmp/status.`echo $RANDOM$RANDOM|cut -c1-4`
 
 # Nagios return codes
 STATE_OK=0
@@ -38,6 +37,7 @@ print_usage() {
         echo ""
         echo "parameters for STATUS are ignored but must be provided. The results for STATUS can be OK or critical."
         echo "parameters for RESOURSECONSERVATION should be 1 and 2."
+	exit $STATE_UNKNOWN
 }
 # XML Parameter info:
 # <system status="online" /> DONE
@@ -93,7 +93,7 @@ if [ $PAR_WARN -ge $PAR_CRIT ]; then
         exit $exitstatus
 fi
 
-#wget --http-user=$USER --http-password=$PASSWORD --no-check-certificate --no-proxy https://$HOSTNAME/xml/status --output-document=$STATUSFILE  >> /dev/null 2>&1
+wget --http-user=$USER --http-password=$PASSWORD --no-check-certificate --no-proxy https://$HOSTNAME/xml/status --output-document=$STATUSFILE  >> /dev/null 2>&1
 #wget --http-user=$USER --http-password=$PASSWORD --no-check-certificate https://$HOSTNAME/xml/status --output-document=$STATUSFILE  >> /dev/null 2>&1
 
 
@@ -304,7 +304,7 @@ case "$ARGS" in
     exit $STATE_OK
 esac
 
-#rm -rf $STATUSFILE
+rm -rf $STATUSFILE
 
 exit $exitstatus
 
