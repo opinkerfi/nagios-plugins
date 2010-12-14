@@ -54,7 +54,7 @@ done
 
 # We we are not checking localhost, lets get remote uptime via NRPE
 if [ "$HOSTN" != "localhost" ]; then
-	export PATH=$PATH:/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins
+	export PATH=$PATH:/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins:/nagios/usr/lib/nagios/plugins
 	CHECK_COMMAND="check_nrpe -H $HOSTN -c get_uptime"
 fi
 

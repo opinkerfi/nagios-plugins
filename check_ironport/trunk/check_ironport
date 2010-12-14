@@ -1,0 +1,311 @@
+#!/bin/sh
+# Plugin to check Ironport Appliances
+# Desarrollado por Claudio Saavedra (20080120)
+# Translated to english by Steven Geerts (20080316)
+# Added various extra checks by Steven Geerts (20080830)
+# Added performance data in the output of the result so graphs can be generated - Yan Bisson (20090625)
+
+
+# input parameters
+HOSTNAME=$1
+USER=$2
+PASSWORD=$3
+ARGS=$4
+PAR_WARN=$5
+PAR_CRIT=$6
+
+
+#STATUSFILE=/tmp/status.`echo $RANDOM$RANDOM|cut -c1-4`
+STATUSFILE=/tmp/xml.status
+
+# Nagios return codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+STATE_DEPENDENT=4
+
+PROGNAME=`basename $0`
+
+print_usage() {
+  echo ""
+        echo "Usage: $PROGNAME <hostname> <user> <password> <parameter> <warning_nro> <critical_nro>"
+        echo ""
+        echo "Notes:"
+        echo " hostname  - Can be a hostname or IP address"
+  echo " parameter - Can be status, cpu, ram, msgxhour, conn_in, conn_out, queue, workqueue,"
+  echo "              msgs_in_quarantine, disk_util, queuedisk_usage or resourseconservation"
+        echo ""
+        echo "parameters for STATUS are ignored but must be provided. The results for STATUS can be OK or critical."
+        echo "parameters for RESOURSECONSERVATION should be 1 and 2."
+}
+# XML Parameter info:
+# <system status="online" /> DONE
+# <gauge name="ram_utilization" current="7" /> DONE
+# <gauge name="total_utilization" current="1" /> DONE
+# <gauge name="cpu_utilization" current="0" />
+# <gauge name="av_utilization" current="0" /> 
+# <gauge name="case_utilization" current="0" /> 
+# <gauge name="bm_utilization" current="0" /> 
+# <gauge name="disk_utilization" current="1" /> DONE
+# <gauge name="resource_conservation" current="0" /> DONE
+# <gauge name="log_used" current="24" /> 
+# <gauge name="log_available" current="123G" /> 
+# <gauge name="conn_in" current="5" /> DONE
+# <gauge name="conn_out" current="1" /> DONE
+# <gauge name="active_recips" current="70" /> 
+# <gauge name="unattempted_recips" current="64" /> DONE 
+# <gauge name="attempted_recips" current="6" /> DONE
+# <gauge name="msgs_in_work_queue" current="0" /> DONE
+# <gauge name="dests_in_memory" current="86" /> 
+# <gauge name="kbytes_used" current="3458" />  DONE
+# <gauge name="kbytes_free" current="71299710" /> DONE
+# <gauge name="msgs_in_quarantine" current="24" /> DONE
+# <gauge name="kbytes_in_quarantine" current="1616" /> 
+# <gauge name="reporting_utilization" current="0" /> 
+# <gauge name="quarantine_utilization" current="0" /> 
+
+while test -n "$1"; do
+        case "$1" in
+                --help)
+                        print_usage
+                        exit $STATE_OK
+                        ;;
+                -h)
+                        print_usage
+                        exit $STATE_OK
+                        ;;
+        esac
+        shift
+done
+
+# Check arguments for validity
+if [ -z ${HOSTNAME} ]; then
+        echo "Please specify the hostname!"
+        print_usage
+        exitstatus=$STATE_UNKNOWN
+        exit $exitstatus
+fi
+
+if [ $PAR_WARN -ge $PAR_CRIT ]; then
+  exitstatus=$STATE_UNKNOWN
+        echo "The WARNING number can not be larger or equal to the CRITICAL number!"
+        exit $exitstatus
+fi
+
+#wget --http-user=$USER --http-password=$PASSWORD --no-check-certificate --no-proxy https://$HOSTNAME/xml/status --output-document=$STATUSFILE  >> /dev/null 2>&1
+#wget --http-user=$USER --http-password=$PASSWORD --no-check-certificate https://$HOSTNAME/xml/status --output-document=$STATUSFILE  >> /dev/null 2>&1
+
+
+
+if [ $? -ne 0 ]; then
+  exitstatus=${STATE_UNKNOWN}
+  echo ""
+  echo "Can't collect data from an Ironpor appliance Ironport. Verify hostname, userID and password!"
+  rm -rf $STATUSFILE
+  exit $exitstatus
+else 
+  exitstatus=${STATE_OK}
+fi
+
+case "$ARGS" in
+
+# <system status="online" /> DONE
+# <gauge name="ram_utilization" current="7" /> DONE
+ status)
+                IPORTPAR=`grep "system status" $STATUSFILE | cut -d\" -f 2`
+                if [ $IPORTPAR = online ]; then
+                   exitstatus=${STATE_OK}
+                   echo "STATUS OK: $IPORTPAR" "| RESULT=1;"
+                else
+                   exitstatus=${STATE_CRITICAL}
+                   echo "STATUS CRITICAL: $IPORTPAR" "| RESULT=0;"
+                fi
+                ;;
+  
+  cpu)
+                IPORTPAR=`grep total_utilization $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "CPU CRITICAL: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "CPU WARNING: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "CPU OK: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  ram)
+                IPORTPAR=`grep ram_utilization $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "RAM CRITICAL: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "RAM WARNING: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "RAM OK: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  msgxhour)
+                IPORTPAR=`grep -A 3 "rate name=\"inj_msgs" $STATUSFILE | grep last_15_min | cut -d\" -f 2  `
+		echo $IPORTPAR $PAR_WARN
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "MAIL RATE CRITICAL: $IPORTPAR msgs/hr" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "MAIL RATE WARNING: $IPORTPAR msgs/hr" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "MAIL RATE OK: $IPORTPAR msgs/hr" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  conn_in)
+                IPORTPAR=`grep conn_in  $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "Incomming Connections CRITICAL: $IPORTPAR connections" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "Incomming Connections WARNING: $IPORTPAR connections" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "Incomming Connections OK: $IPORTPAR connections" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                
+               fi
+               ;; 
+  conn_out)
+                IPORTPAR=`grep conn_out  $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "Outgoing Connections CRITICAL: $IPORTPAR connections" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "Outgoing Connections WARNING: $IPORTPAR connections" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "Outgoing Connections OK: $IPORTPAR connections" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+                  
+  queue)
+               IPORTPAR1=`grep \"attempted_recips $STATUSFILE | cut -d\" -f 4`
+               IPORTPAR2=`grep unattempted_recips $STATUSFILE | cut -d\" -f 4`
+               IPORTPAR=`expr $IPORTPAR1 + $IPORTPAR2`
+               if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "QUEUE CRITICAL: $IPORTPAR msgs" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "QUEUE WARNING: $IPORTPAR msgs" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "QUEUE OK: $IPORTPAR msgs" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  workqueue)
+                IPORTPAR=`grep msgs_in_work_queue $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "WORKQUEUE CRITICAL: $IPORTPAR msgs" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "WORKQUEUE WARNING: $IPORTPAR msgs" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "WORKQUEUE OK: $IPORTPAR msgs" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+   resourseconservation)
+                IPORTPAR=`grep resource_conservation $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "RESOURSECONSERVATION CRITICAL: $IPORTPAR" "| RESULT=$IPORTPAR;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "RESOURSECONSERVATION WARNING: $IPORTPAR" "| RESULT=$IPORTPAR;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "RESOURSECONSERVATION OK: $IPORTPAR " "| RESULT=$IPORTPAR;"
+                fi
+                ;;
+  disk_util)
+                IPORTPAR=`grep disk_utilization $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "Disk Utilization CRITICAL: $IPORTPAR " "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "Disk Utilization WARNING: $IPORTPAR " "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "Disk Utilization OK: $IPORTPAR" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  msgs_in_quarantine)
+              IPORTPAR=`grep msgs_in_quarantine $STATUSFILE | cut -d\" -f 4`
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "MSG In Quarantine CRITICAL: $IPORTPAR" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "MSG In Quarantine WARNING: $IPORTPAR" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "MSG In Quarantine OK: $IPORTPAR" "| RESULT=$IPORTPAR;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  queuedisk_usage) 
+               IPORTPAR1=`grep kbytes_free $STATUSFILE | cut -d\" -f 4`
+               IPORTPAR2=`grep kbytes_used $STATUSFILE | cut -d\" -f 4`
+               IPORTPAR3="$(( $IPORTPAR1 / 100 ))"
+               IPORTPAR="$(( $IPORTPAR2 / $IPORTPAR3 ))"
+                if [ $IPORTPAR -ge $PAR_WARN ]; then
+                        if [ $IPORTPAR -ge $PAR_CRIT ]; then
+                                exitstatus=${STATE_CRITICAL}
+                                echo "QueueDisk Usage CRITICAL: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                        else
+                                exitstatus=${STATE_WARNING}
+                                echo "QueueDisk Usage WARNING: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                        fi
+                else
+                        exitstatus=${STATE_OK}
+                        echo "QueueDisk Usage OK: $IPORTPAR%" "| RESULT=$IPORTPAR%;$PAR_WARN;$PAR_CRIT;"
+                fi
+                ;;
+  
+  
+
+  *)
+    print_usage
+    exit $STATE_OK
+esac
+
+#rm -rf $STATUSFILE
+
+exit $exitstatus
+
+

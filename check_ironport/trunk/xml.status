@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+
+
+
+<status build="phoebe 7.1.2-020" hostname="ironport.example.com" timestamp="20101214144744">
+  <birth_time timestamp="20100915115720 (90d 2h 50m 24s)"/>
+  <last_counter_reset timestamp="20101129092210"/>
+  <system status="online" />
+  <oldest_message secs="0" mid="0" />
+  <features>
+    <feature name="Virus Outbreak Filters" time_remaining="80353470" />
+
+    <feature name="IronPort Email Encryption" time_remaining="80353469" />
+    <feature name="IronPort Anti-Spam" time_remaining="80353469" />
+    <feature name="RSA Email Data Loss Prevention" time_remaining="80353468" />
+    <feature name="Sophos" time_remaining="80353468" />
+    <feature name="Central Mgmt" time_remaining="80353469" />
+  </features>
+  <counters>
+    <counter name="inj_msgs"
+        reset="86"
+        uptime="339"
+        lifetime="339" />
+    <counter name="inj_recips"
+        reset="95"
+        uptime="366"
+        lifetime="366" />
+
+    <counter name="gen_bounce_recips"
+        reset="0"
+        uptime="4"
+        lifetime="4" />
+    <counter name="rejected_recips"
+        reset="4"
+        uptime="402"
+        lifetime="402" />
+    <counter name="dropped_msgs"
+        reset="0"
+        uptime="2"
+        lifetime="2" />
+    <counter name="soft_bounced_evts"
+        reset="0"
+        uptime="0"
+        lifetime="0" />
+    <counter name="completed_recips"
+        reset="98"
+        uptime="367"
+        lifetime="367" />
+    <counter name="hard_bounced_recips"
+        reset="0"
+        uptime="4"
+        lifetime="4" />
+    <counter name="dns_hard_bounced_recips"
+        reset="0"
+        uptime="1"
+        lifetime="1" />
+    <counter name="5xx_hard_bounced_recips"
+        reset="0"
+        uptime="3"
+        lifetime="3" />
+    <counter name="filter_hard_bounced_recips"
+        reset="0"
+        uptime="0"
+        lifetime="0" />
+
+    <counter name="expired_hard_bounced_recips"
+        reset="0"
+        uptime="0"
+        lifetime="0" />
+    <counter name="other_hard_bounced_recips"
+        reset="0"
+        uptime="0"
+        lifetime="0" />
+    <counter name="delivered_recips"
+        reset="95"
+        uptime="332"
+        lifetime="332" />
+    <counter name="deleted_recips"
+        reset="3"
+        uptime="31"
+        lifetime="31" />
+    <counter name="global_unsub_hits"
+        reset="0"
+        uptime="0"
+        lifetime="0" />
+  </counters>
+  <current_ids
+    message_id="772"
+    injection_conn_id="1699"
+    delivery_conn_id="284" />
+  <rates>
+    <rate name="inj_msgs"
+      last_1_min="0"
+      last_5_min="12"
+      last_15_min="8" />
+
+    <rate name="inj_recips"
+      last_1_min="0"
+      last_5_min="24"
+      last_15_min="12" />
+    <rate name="soft_bounced_evts"
+      last_1_min="0"
+      last_5_min="0"
+      last_15_min="0" />
+    <rate name="completed_recips"
+      last_1_min="0"
+      last_5_min="24"
+      last_15_min="12" />
+    <rate name="hard_bounced_recips"
+      last_1_min="0"
+      last_5_min="0"
+      last_15_min="0" />
+    <rate name="delivered_recips"
+      last_1_min="0"
+      last_5_min="24"
+      last_15_min="12" />
+  </rates>
+  <gauges>
+    <gauge name="ram_utilization" current="1" />
+    <gauge name="total_utilization" current="1" />
+
+    <gauge name="cpu_utilization" current="1" />
+    <gauge name="av_utilization" current="0" />
+    <gauge name="case_utilization" current="0" />
+    <gauge name="bm_utilization" current="0" />
+    <gauge name="disk_utilization" current="0" />
+    <gauge name="resource_conservation" current="0" />
+    <gauge name="log_used" current="1" />
+    <gauge name="log_available" current="183G" />
+    <gauge name="conn_in" current="0" />
+
+    <gauge name="conn_out" current="0" />
+    <gauge name="active_recips" current="0" />
+    <gauge name="unattempted_recips" current="0" />
+    <gauge name="attempted_recips" current="0" />
+    <gauge name="msgs_in_work_queue" current="0" />
+    <gauge name="dests_in_memory" current="4" />
+    <gauge name="kbytes_used" current="0" />
+    <gauge name="kbytes_free" current="8388608" />
+    <gauge name="msgs_in_quarantine" current="0" />
+
+    <gauge name="kbytes_in_quarantine" current="0" />
+    <gauge name="log_used" current="1" />
+    <gauge name="reporting_utilization" current="0" />
+    <gauge name="quarantine_utilization" current="0" />
+  </gauges>
+</status>
+
