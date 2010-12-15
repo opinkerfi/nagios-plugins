@@ -88,7 +88,7 @@ def runCommand(command):
   stdout, stderr = proc.communicate('through stdin to stdout')
   if proc.returncode > 0:
     print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-		debug("results: %s" % (stdout.strip() )
+    debug("results: %s" % (stdout.strip() ) )
     if proc.returncode == 127: # File not found, lets print path
         path=getenv("PATH")
         print "Check if your path is correct %s" % (path)
