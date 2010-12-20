@@ -121,7 +121,7 @@ def main():
             usage()
             sys.exit()
 
-    clustatOutput = os.popen('clustat -fx')
+    clustatOutput = os.popen('/usr/sbin/clustat -fx')
     dom = xml.dom.minidom.parse(clustatOutput)
 
     if typeCheck == 'cluster':
