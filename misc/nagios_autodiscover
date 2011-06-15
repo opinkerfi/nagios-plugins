@@ -1,18 +1,47 @@
-#!/bin/sh
+#!/bin/bash
 
 
-IPS=`fping -a -g $1 2>/dev/nul`
+IPS=`fping -a -g $1 2>/dev/null`
 if [ $? -gt 2 ]; then
 	echo failed to run fping
 	exit 1
 fi
 
-
 #addgroup --group misc --alias "Misc hosts"
 
+check_port() {
+	hostname=$1
+	port=$2
+	check_tcp -H $hostname -p $port > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		return 0
+	fi
+	return 1
+}
+
+is_windows() {
+	hostname=$1
+	check_port $hostname 3389 > /dev/null 2>&1
+	return $?
+}
+
+is_linux() {
+	hostname=$1
+	check_port $hostname 22
+	return $?
+}
+
+
 for ip in $IPS; do
+	
+	# Check if ip is just fping garbage output
+	echo $ip | grep -Eq '\[|\]' 
+	if [ $? -eq 0 ]; then
+		continue
+	fi
 	# Check if this host already exists
-	grep -qw $ip /var/log/nagios/objects.cache
+
+	grep -qw "$ip" /var/log/nagios/objects.cache > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		continue
 	fi
@@ -22,7 +51,9 @@ for ip in $IPS; do
 	else
 		HOSTN=`echo $RES | head -n 1 | sed 's/.*name pointer //' | sed 's/\.$//'`
 	fi
-	echo $ip = $HOSTN
-	addhost --host $HOSTN --ip $ip --group misc --templates autodiscover
+	echo $ip = $HOSTN `is_windows $HOSTN` `is_linux $HOSTN`
+	#addhost --host $HOSTN --ip $ip --group misc --templates autodiscover
 done
+
+
 
