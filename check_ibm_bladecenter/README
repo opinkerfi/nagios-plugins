@@ -1,0 +1,128 @@
+check_ibm_bladecenter.py
+
+# About this script
+# 
+# This script will check the status of a remote IBM Bladecenter via SNMP.
+# Among other things the following are monitored:
+# * General Health
+# * Powermodule status
+# * Temperature
+# * Blade health
+# * Switchmodule Health
+# * Management Module health
+# * Blowers
+# * Chassis Sensors
+
+
+
+# Usage
+
+#------------------------------------------------------------------
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --help
+usage: check_ibm_bladecenter.py [options]
+
+options:
+  -h, --help            show this help message and exit
+  -m MODE, --mode=MODE  Which check mode is in use (powermodules,system-
+                        health,temperature,chassis-
+                        status,bladehealth,blowers,switchmodules)
+  -H HOST, --host=HOST  Hostname or IP address of the host to check
+  -w WARNING_THRESHOLD, --warning=WARNING_THRESHOLD
+                        Warning threshold
+  -c CRITICAL_THRESHOLD, --critical=CRITICAL_THRESHOLD
+                        Critical threshold
+  -e EXCLUDE, --exclude=EXCLUDE
+                        Exclude specific object
+  -v SNMP_VERSION, --snmp_version=SNMP_VERSION
+                        SNMP Version to use (1, 2c or 3)
+  -u SNMP_USERNAME, --snmp_username=SNMP_USERNAME
+                        SNMP username (only with SNMP v3)
+  -C SNMP_COMMUNITY, --snmp_community=SNMP_COMMUNITY
+                        SNMP Community (only with SNMP v1|v2c)
+  -p SNMP_PASSWORD, --snmp_password=SNMP_PASSWORD
+                        SNMP password (only with SNMP v3)
+  -l SNMP_SECLEVEL, --snmp_security_level=SNMP_SECLEVEL
+                        SNMP security level (only with SNMP v3)
+                        (noAuthNoPriv|authNoPriv|authPriv)
+  -d, --debug           Enable debugging (for troubleshooting
+#------------------------------------------------------------------
+
+# Example Usage:
+
+
+# Chassis-status
+
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode chassis-status
+OK - Blades OK. PowerModules OK. Switchmodules OK. Blowers OK. Media Trays OK. Other Sensors: OK.  | 
+
+Other Sensors: 
+ bistRs485Port1 status: 0 (ok)
+ bistRs485Port2 status: 0 (ok)
+ bistLocalI2CBus status: 0 (ok)
+ bistPrimaryMainAppFlashImage status: 0 (ok)
+ bistSecondaryMainAppFlashImage status: 0 (ok)
+ bistBootRomFlashImage status: 0 (ok)
+ bistEthernetPort1 status: 0 (ok)
+ bistExternalI2CDevices status: 0 (ok)
+ bistInternalEthernetSwitch status: 0 (ok)
+
+
+
+# System Health
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode system-health
+OK - Bladecenter health: OK. Good: No critical or warning events | 
+
+
+# Ambient Temperature
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode temperature --warning 20 --critical 30
+Warning - ambient temperature (21.00 Centigrade) is over warning thresholds (20).  |  'ambient_temp'=21.0;20;30 
+
+
+#  Blowers
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode blowers
+OK - Blower1 OK. Blower1 OK.  |  blower1=55%  blower2=55% 
+
+Blower 1 state=1 speed=55% of maximum
+Blower 2 state=1 speed=55% of maximum
+
+# Powermodules
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode powermodules
+OK - 4 out of 4 powermodules are healthy |  'Number of powermodules'=4 
+
+Powersupply "1" status "1". Power module status OK. 
+Powersupply "2" status "1". Power module status OK. 
+Powersupply "3" status "1". Power module status OK. 
+Powersupply "4" status "1". Power module status OK. 
+
+# Switchmodules
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode switchmodules
+OK - All switchmodules healthy | 
+
+Module1 health good.
+  post=POST results available: Module completed POST successfully.
+  type=CSCO ip=10.101.13.212
+Module2 health good.
+  post=POST results available: Module completed POST successfully.
+  type=CSCO ip=10.101.13.213
+Module3 health good.
+  post=POST results available: Module completed POST successfully.
+  type=BRCD ip=10.101.13.237
+Module4 health good.
+  post=POST results available: Module completed POST successfully.
+  type=BRCD ip=10.101.13.238
+
+# Blades
+-bash-3.2$ python /nagios/usr/lib/nagios/plugins/check_ibm_bladecenter.py --host rek-blade-p01 --snmp_community public --snmp_version 1 --mode bladehealth
+OK - 8 out of 8 blades in Good health.  | 
+
+blade1 (REK-SQLDB-P01): Good No critical or warning events
+blade2 (REK-FOREFR-P01): Good No critical or warning events
+blade3 (REK-CL-P06N1): Good No critical or warning events
+blade6 (REK-CL-P01N1): Good No critical or warning events
+blade8 (rek-sawm-p01): Good No critical or warning events
+blade10 (REK-FIX-P01): Good No critical or warning events
+blade11 (REK-SAPBW-D1): Good No critical or warning events
+blade14 (rek-oradb-t02): Good No critical or warning events
+
+
+
