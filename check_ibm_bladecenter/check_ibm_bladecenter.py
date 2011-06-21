@@ -18,15 +18,7 @@
 # About this script
 # 
 # This script will check the status of a remote IBM Bladecenter via SNMP.
-# Among other things the following are monitored:
-# * General Health
-# * Powermodule status
-# * Temperature
-# * Blade health
-# * Switchmodule Health
-# * Management Module health
-# * Blowers
-# * Chassis Sensors
+
 
 
 # No real need to change anything below here
@@ -87,6 +79,8 @@ parser.add_option("-p","--snmp_password", dest="snmp_password",
 	help="SNMP password (only with SNMP v3)", default=None)
 parser.add_option("-l","--snmp_security_level", dest="snmp_seclevel",
 	help="SNMP security level (only with SNMP v3) (noAuthNoPriv|authNoPriv|authPriv)", default=None)
+parser.add_option("-t","--snmp_timeout", dest="snmp_timeout",
+	help="Timeout in seconds for SNMP", default=10)
 parser.add_option("-d","--debug", dest="debug",
 	help="Enable debugging (for troubleshooting", action="store_true", default=False)
 
@@ -115,6 +109,7 @@ def set_snmp_options():
 		if opts.snmp_community is None:
 			parser.error("--snmp_community is required with --snmp_version=1|2c")
 		snmp_options = snmp_options + " -c %s " % opts.snmp_community 
+	snmp_options += " -t %s " % (opts.snmp_timeout)
 
 def error(errortext):
         print "* Error: %s" % errortext
@@ -269,7 +264,7 @@ def check_switchmodules():
 				add_long("Module%s health good.\n  post=%s" % (myIndex,resultvalue))
 			else:
 				nagios_status(warning)
-				add_long("Module%s health bad.\n  post=%s" % (myIndex, resultvalue) )
+				add_long("Module%s health bad(%s).\n  post=%s" % (myIndex, healthstate,resultvalue) )
 				add_summary("Problem with Module %s. " % (myIndex))
 			if len(extrainfo) > int(myIndex):
 				myExtraInfo = extrainfo[int(myIndex)-1]
@@ -441,7 +436,8 @@ def check_bladehealth():
 		myBladeid = row[bladeid]
 		mySeverity = row[severity]
 		myDescription = row[description]
-		myName = bladestate[i][6]
+		try: myName = bladestate[i][6]
+		except: myName = ""
 		if mySeverity == "(No severity)": continue
 		add_long( "blade%s (%s): %s %s" % (myBladeid,myName,mySeverity, myDescription) )
 		total_blades += 1
@@ -470,7 +466,7 @@ def check_systemhealth():
 	elif systemhealthstat == "4":
 		nagios_status(critical)
 		add_summary("System-Level Error. ")
-	elif systemhealth == "0":
+	elif systemhealthstat == "0":
 		nagios_status(critical)
 		add_summary("Critical. ")
 	else:
@@ -483,7 +479,8 @@ def check_systemhealth():
 			nagios_status(warning)
 		else:
 			nagios_status(critical)
-		add_summary( "%s: %s" % (row[severity], row[description]) )
+		add_summary( "%s. " % (row[description]) )
+		add_long( "* %s. " % (row[description]) )
 	
 def check_temperature():
 	# set some sensible defaults
@@ -507,21 +504,25 @@ def check_temperature():
 
 
 if __name__ == '__main__':
-	set_snmp_options()
-	if opts.mode == 'powermodules':
-		check_powermodules()
-	elif opts.mode == 'system-health':
-		check_systemhealth()
-	elif opts.mode == 'temperature':
-		check_temperature()
-	elif opts.mode == 'chassis-status':
-		check_chassis_status()
-	elif opts.mode == 'bladehealth':
-		check_bladehealth()
-	elif opts.mode == 'blowers':
-		check_blowers()
-	elif opts.mode == 'switchmodules':
-		check_switchmodules()
-	else:
-		parser.error("%s is not a valid option for --mode" % opts.mode)
+	try:
+		set_snmp_options()
+		if opts.mode == 'powermodules':
+			check_powermodules()
+		elif opts.mode == 'system-health':
+			check_systemhealth()
+		elif opts.mode == 'temperature':
+			check_temperature()
+		elif opts.mode == 'chassis-status':
+			check_chassis_status()
+		elif opts.mode == 'bladehealth':
+			check_bladehealth()
+		elif opts.mode == 'blowers':
+			check_blowers()
+		elif opts.mode == 'switchmodules':
+			check_switchmodules()
+		else:
+			parser.error("%s is not a valid option for --mode" % opts.mode)
+	except Exception, e:
+		print "Unhandled exception while running script: %s" % e
+		exit(unknown)
 	end()
