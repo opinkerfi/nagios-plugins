@@ -1,0 +1,28 @@
+#!/bin/sh
+TMP=`mktemp`
+LAST_HOUR=`date "+%b %e %H:" -d "1 hour ago"`
+CURRENT_HOUR=`date "+%b %e %H:"`
+
+tail -n 2000 /var/log/messages | \
+grep -E "$CURRENT_HOUR|$LAST_HOUR" | \
+grep "Passive check result was received" | \
+grep -i "could not be found"  | \
+sed 's/.*Passive check result was received for service //' | \
+sed 's/, but the host could not be found.*//' | \
+sort | uniq > $TMP
+
+
+LINES=`cat $TMP | wc -l`
+PERFDATA="'ghost_clients'=$LINES"
+if [ $LINES -gt 0 ]; then
+	echo "$LINES ghost clients found in Nagios log files | $PERFDATA" 
+	echo ""
+	cat $TMP
+	rm -f $TMP
+	exit 1
+fi
+
+echo "No ghost clients found in Nagios log files | $PERFDATA"
+rm -f $TMP
+exit 0
+
