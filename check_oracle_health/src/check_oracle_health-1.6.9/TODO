@@ -1,0 +1,26 @@
+a lot
+
+maybe add some ORA- to the examples
+ORA-60X alle Internal Errors 
+SEGV, SIGBUS alle System Access Violations 
+Ora-4020 Deadlock on library object 
+ORA-8103 Object no longer exists 
+ORA-1410 invalid ROWID 
+ORA-1578 Data block corrupted 
+ORA-29740 Node eviction 
+ORA-255 Database is not mounted 
+ORA-376 File cannot be read at this time 
+ORA-4030 Out of memory 
+ORA-4031 Unable to allocate more bytes of shared memory 
+ORA-355 The change numbers are out of order 
+ORA356 Inconsistent lengths in change description 
+ORA-353 Log corruption 
+ORA-7445 Operating System exception 
+Checkpoint not complete
+
+
+! Lesny proposal for multiple sql results
+
+
+flash recovery area free
+http://www.muniqsoft.de/tipps/monatstipps/Tipp0308.pdf
