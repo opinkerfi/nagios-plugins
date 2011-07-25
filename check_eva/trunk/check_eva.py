@@ -333,7 +333,9 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 					nagios_myhostname = environ['COMPUTERNAME']
 				else:
 					nagios_myhostname = hostname
-			phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode,system=check_system)
+			try: phone_home(nagios_server,nagios_port, status=nagios_state, message=message, hostname=nagios_myhostname, servicename=mode,system=check_system)
+			except:pass
+
 		except:
 			raise
 	print message
