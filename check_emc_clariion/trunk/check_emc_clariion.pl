@@ -31,7 +31,9 @@ use Pod::Usage;
 
 # predeclared subs
 use subs qw/print_help check_sp check_disk check_portstate check_hbastate check_cache check_faults/;
-
+my $opt_sp="";
+my $missing_bus="";
+my $missing_enclosure="";
 # predeclared vars
 use vars qw (
   $PROGNAME
@@ -67,6 +69,15 @@ $opt_port=-1;
 # a variable in order to manage the secure mode of Navicli
 my $secure;
 $secure=0;
+
+# timeout in seconds for calls to navi(sec)cli
+my $clitimeout;
+$clitimeout=18;
+
+$SIG{ALRM} = sub {
+   print "CLI call timeout";
+   exit 3;
+};
 
 # Main values
 $PROGNAME = basename($0);
@@ -119,6 +130,7 @@ if ( $opt_user && $opt_password ) {
 # Check if all needed options present.
 if ( $opt_host && $opt_checktype ) {
 	# do the work
+	alarm($clitimeout);
 	if ($opt_checktype eq "sp" && $opt_sp ne "") {
 		check_sp();
 	}
@@ -137,6 +149,7 @@ if ( $opt_host && $opt_checktype ) {
 	if ($opt_checktype eq "hbastate" && $opt_pathcount ne "" && $opt_node ne "") {
 		check_hbastate();
 	}
+	alarm(0);
 	print_help(1, 'Wrong parameters specified!');
 }
 else {
@@ -173,20 +186,31 @@ sub check_sp {
 					$error_count++;
 				}	
 			}
+			# check for a missing enclosure
+			#if( $_ =~ m/.*Bus\s\(\d\)\sEnclosure\s\(\d\d\)\s:\sMissi.*/ ){
+			#(Bus 2 Enclosure 3 : Missing)	
+			if( $_ =~ m/Bus\s(\d+)\sEnclosure\s(\d+)\s:\sMissing/ ){
+				my $missing_bus = $1;
+				my $missing_enclosure = $2;
+				#print "Missing enclosure at $missing_bus $missing_enclosure!\n";
+			}
 			# check for Enclosure lines
-			if( $_ =~ m/Enclosure\s(\d+|\w+)\s(\w+)\s$opt_sp\d?\s\w+:\s+(.*)/) {
+			if( $_ =~ m/Enclosure\s(\d+|\w+)\s(\w+)\s$opt_sp\d?\s(\w+):\s+(.*)/) {
 				my $check = $2;
-				if ($3 =~ m/Removed|\d+.\d+|Present|Valid|N\/A|255.255/) {
+				if ($3 =~ m/Revision/ or $4 =~ m/Removed/) { }
+				elsif ($4 =~ m/Present|Valid|N\/A|255.255/) {
 					$output .= "$check ok,";
 				} else {
+					print "check: $check $3 $4 \n";
 					$output .= "$check failed,";
 					$error_count++;
 				}	
 			}
 			# check for Cabling lines
-			if( $_ =~ m/Enclosure\s(\d+|\w+)\s\w+\s$opt_sp\s(\w+)\s\w+:\s+(.*)/) {
+				
+			if( $_ =~ m/Enclosure\s(\d+|\w+)\s\w+\s$opt_sp\s(\w+)\s(\w+):\s+(.*)/) {
 				my $check = $2;
-				if ($3 =~ m/Present|Valid|N\/A|255.255/) {
+				if ($4 =~ m/Removed|Present|Valid|N\/A|255.255/) {
 					$output .= "$check ok,";
 				} else {
 					$output .= "$check failed,";
