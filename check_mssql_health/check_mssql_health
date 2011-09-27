@@ -1,0 +1,3156 @@
+#! /usr/bin/perl -w
+
+my %ERRORS=( OK => 0, WARNING => 1, CRITICAL => 2, UNKNOWN => 3 );
+my %ERRORCODES=( 0 => 'OK', 1 => 'WARNING', 2 => 'CRITICAL', 3 => 'UNKNOWN' );
+package DBD::MSSQL::Server::Memorypool;
+
+use strict;
+
+our @ISA = qw(DBD::MSSQL::Server);
+
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    handle => $params{handle},
+    buffercache => undef,
+    procedurecache => undef,
+    locks => [],
+  };
+  bless $self, $class;
+  $self->init(%params);
+  return $self;
+}
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  $self->init_nagios();
+  if ($params{mode} =~ /server::memorypool::buffercache/) {
+    $self->{buffercache} = DBD::MSSQL::Server::Memorypool::BufferCache->new(
+        %params);
+  } elsif ($params{mode} =~ /server::memorypool::procedurecache/) {
+    $self->{procedurecache} = DBD::MSSQL::Server::Memorypool::ProcedureCache->new(
+        %params);
+  } elsif ($params{mode} =~ /server::memorypool::lock/) {
+    DBD::MSSQL::Server::Memorypool::Lock::init_locks(%params);
+    if (my @locks = DBD::MSSQL::Server::Memorypool::Lock::return_locks()) {
+      $self->{locks} = \@locks;
+    } else {
+      $self->add_nagios_critical("unable to aquire lock info");
+    }
+  }
+}
+
+sub nagios {
+  my $self = shift;
+  my %params = @_;
+  if ($params{mode} =~ /server::memorypool::buffercache/) {
+    $self->{buffercache}->nagios(%params);
+    $self->merge_nagios($self->{buffercache});
+  } elsif ($params{mode} =~ /^server::memorypool::lock::listlocks/) {
+    foreach (sort { $a->{name} cmp $b->{name}; }  @{$self->{locks}}) {
+      printf "%s\n", $_->{name};
+    }
+    $self->add_nagios_ok("have fun");
+  } elsif ($params{mode} =~ /^server::memorypool::lock/) {
+    foreach (@{$self->{locks}}) {
+      $_->nagios(%params);
+      $self->merge_nagios($_);
+    }
+  }
+}
+
+
+package DBD::MSSQL::Server::Memorypool::BufferCache;
+
+use strict;
+
+our @ISA = qw(DBD::MSSQL::Server::Memorypool);
+
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    handle => $params{handle},
+    hitratio => undef,
+    warningrange => $params{warningrange},
+    criticalrange => $params{criticalrange},
+  };
+  bless $self, $class;
+  $self->init(%params);
+  return $self;
+}
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  $self->init_nagios();
+  if ($params{mode} =~ /server::memorypool::buffercache::hitratio/) {
+    #        -- (a.cntr_value * 1.0 / b.cntr_value) * 100.0 [BufferCacheHitRatio]
+    $self->{cnt_hitratio} = $self->{handle}->get_perf_counter(
+        "SQLServer:Buffer Manager", "Buffer cache hit ratio");
+    $self->{cnt_hitratio_base} = $self->{handle}->get_perf_counter(
+        "SQLServer:Buffer Manager", "Buffer cache hit ratio base");
+    if (! defined $self->{cnt_hitratio}) {
+      $self->add_nagios_unknown("unable to aquire buffer cache data");
+    } else {
+      # das kracht weil teilweise negativ
+      #$self->valdiff(\%params, qw(cnt_hitratio cnt_hitratio_base));
+      $self->{hitratio} = ($self->{cnt_hitratio_base} == 0) ?
+          100 : $self->{cnt_hitratio} / $self->{cnt_hitratio_base} * 100.0;
+      # soll vorkommen.....
+      $self->{hitratio} = 100 if ($self->{hitratio} > 100);
+    }
+  } elsif ($params{mode} =~ /server::memorypool::buffercache::lazywrites/) {
+    $self->{lazy_writes_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:Buffer Manager", "Lazy writes/sec");
+    if (! defined $self->{lazy_writes_s}) {
+      $self->add_nagios_unknown("unable to aquire buffer manager data");
+    } else {
+      $self->valdiff(\%params, qw(lazy_writes_s));
+      $self->{lazy_writes_per_sec} = $self->{delta_lazy_writes_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /server::memorypool::buffercache::pagelifeexpectancy/) {
+    $self->{pagelifeexpectancy} = $self->{handle}->get_perf_counter(
+        "SQLServer:Buffer Manager", "Page life expectancy");
+    if (! defined $self->{pagelifeexpectancy}) {
+      $self->add_nagios_unknown("unable to aquire buffer manager data");
+    }
+  } elsif ($params{mode} =~ /server::memorypool::buffercache::freeliststalls/) {
+    $self->{freeliststalls_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:Buffer Manager", "Free list stalls/sec");
+    if (! defined $self->{freeliststalls_s}) {
+      $self->add_nagios_unknown("unable to aquire buffer manager data");
+    } else {
+      $self->valdiff(\%params, qw(freeliststalls_s));
+      $self->{freeliststalls_per_sec} = $self->{delta_freeliststalls_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /server::memorypool::buffercache::checkpointpages/) {
+    $self->{checkpointpages_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:Buffer Manager", "Checkpoint pages/sec");
+    if (! defined $self->{checkpointpages_s}) {
+      $self->add_nagios_unknown("unable to aquire buffer manager data");
+    } else {
+      $self->valdiff(\%params, qw(checkpointpages_s));
+      $self->{checkpointpages_per_sec} = $self->{delta_checkpointpages_s} / $self->{delta_timestamp};
+    }
+  }
+}
+
+sub nagios {
+  my $self = shift;
+  my %params = @_;
+  if (! $self->{nagios_level}) {
+    if ($params{mode} =~ /server::memorypool::buffercache::hitratio/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{hitratio}, '90:', '80:'),
+          sprintf "buffer cache hit ratio is %.2f%%", $self->{hitratio});
+      $self->add_perfdata(sprintf "buffer_cache_hit_ratio=%.2f%%;%s;%s",
+          $self->{hitratio},
+          $self->{warningrange}, $self->{criticalrange});
+      #$self->add_perfdata(sprintf "buffer_cache_hit_ratio_now=%.2f%%",
+      #    $self->{hitratio_now});
+    } elsif ($params{mode} =~ /server::memorypool::buffercache::lazywrites/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{lazy_writes_per_sec}, '20', '40'),
+          sprintf "%.2f lazy writes per second", $self->{lazy_writes_per_sec});
+      $self->add_perfdata(sprintf "lazy_writes_per_sec=%.2f;%s;%s",
+          $self->{lazy_writes_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /server::memorypool::buffercache::pagelifeexpectancy/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{pagelifeexpectancy}, '300:', '180:'),
+          sprintf "page life expectancy is %d seconds", $self->{pagelifeexpectancy});
+      $self->add_perfdata(sprintf "page_life_expectancy=%d;%s;%s",
+          $self->{pagelifeexpectancy},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /server::memorypool::buffercache::freeliststalls/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{freeliststalls_per_sec}, '4', '10'),
+          sprintf "%.2f free list stalls per second", $self->{freeliststalls_per_sec});
+      $self->add_perfdata(sprintf "free_list_stalls_per_sec=%.2f;%s;%s",
+          $self->{freeliststalls_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /server::memorypool::buffercache::checkpointpages/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{checkpointpages_per_sec}, '100', '500'),
+          sprintf "%.2f pages flushed per second", $self->{checkpointpages_per_sec});
+      $self->add_perfdata(sprintf "checkpoint_pages_per_sec=%.2f;%s;%s",
+          $self->{checkpointpages_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    }
+  }
+}
+
+
+
+
+
+package DBD::MSSQL::Server::Memorypool::Lock;
+
+use strict;
+
+our @ISA = qw(DBD::MSSQL::Server::Memorypool);
+
+
+{
+  my @locks = ();
+  my $initerrors = undef;
+
+  sub add_lock {
+    push(@locks, shift);
+  }
+
+  sub return_locks {
+    return reverse
+        sort { $a->{name} cmp $b->{name} } @locks;
+  }
+
+  sub init_locks {
+    my %params = @_;
+    my $num_locks = 0;
+    if (($params{mode} =~ /server::memorypool::lock::listlocks/) ||
+        ($params{mode} =~ /server::memorypool::lock::waits/) ||
+        ($params{mode} =~ /server::memorypool::lock::deadlocks/) ||
+        ($params{mode} =~ /server::memorypool::lock::timeouts/)) {
+      my @lockresult = $params{handle}->get_instance_names(
+          'SQLServer:Locks');
+      foreach (@lockresult) {
+        my ($name) = @{$_};
+        $name =~ s/\s*$//;
+        if ($params{regexp}) {
+          next if $params{selectname} && $name !~ /$params{selectname}/;
+        } else {
+          next if $params{selectname} && lc $params{selectname} ne lc $name;
+        }
+        my %thisparams = %params;
+        $thisparams{name} = $name;
+        my $lock = DBD::MSSQL::Server::Memorypool::Lock->new(
+            %thisparams);
+        add_lock($lock);
+        $num_locks++;
+      }
+      if (! $num_locks) {
+        $initerrors = 1;
+        return undef;
+      }
+    }
+  }
+
+}
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    handle => $params{handle},
+    warningrange => $params{warningrange},
+    criticalrange => $params{criticalrange},
+    name => $params{name},
+  };
+  bless $self, $class;
+  $self->init(%params);
+  return $self;
+}
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  $self->init_nagios();
+  if ($params{mode} =~ /server::memorypool::lock::listlocks/) {
+    # name reicht
+  } elsif ($params{mode} =~ /server::memorypool::lock::waits/) {
+    $self->{lock_waits_s} = $self->{handle}->get_perf_counter_instance(
+        "SQLServer:Locks", "Lock Waits/sec", $self->{name});
+    if (! defined $self->{lock_waits_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(lock_waits_s));
+      $self->{lock_waits_per_sec} = $self->{delta_lock_waits_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /^server::memorypool::lock::timeouts/) {
+    $self->{lock_timeouts_s} = $self->{handle}->get_perf_counter_instance(
+        "SQLServer:Locks", "Lock Timeouts/sec", $self->{name});
+    if (! defined $self->{lock_timeouts_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(lock_timeouts_s));
+      $self->{lock_timeouts_per_sec} = $self->{delta_lock_timeouts_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /^server::memorypool::lock::deadlocks/) {
+    $self->{lock_deadlocks_s} = $self->{handle}->get_perf_counter_instance(
+        "SQLServer:Locks", "Number of Deadlocks/sec", $self->{name});
+    if (! defined $self->{lock_deadlocks_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(lock_deadlocks_s));
+      $self->{lock_deadlocks_per_sec} = $self->{delta_lock_deadlocks_s} / $self->{delta_timestamp};
+    }
+  }
+}
+
+sub nagios {
+  my $self = shift;
+  my %params = @_;
+  if (! $self->{nagios_level}) {
+    if ($params{mode} =~ /server::memorypool::lock::waits/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{lock_waits_per_sec}, 100, 500),
+          sprintf "%.4f lock waits / sec for %s",
+          $self->{lock_waits_per_sec}, $self->{name});
+      $self->add_perfdata(sprintf "%s_lock_waits_per_sec=%.4f;%s;%s",
+          $self->{name}, $self->{lock_waits_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::memorypool::lock::timeouts/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{lock_timeouts_per_sec}, 1, 5),
+          sprintf "%.4f lock timeouts / sec for %s",
+          $self->{lock_timeouts_per_sec}, $self->{name});
+      $self->add_perfdata(sprintf "%s_lock_timeouts_per_sec=%.4f;%s;%s",
+          $self->{name}, $self->{lock_timeouts_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::memorypool::lock::deadlocks/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{lock_deadlocks_per_sec}, 1, 5),
+          sprintf "%.4f deadlocks / sec for %s",
+          $self->{lock_deadlocks_per_sec}, $self->{name});
+      $self->add_perfdata(sprintf "%s_deadlocks_per_sec=%.4f;%s;%s",
+          $self->{name}, $self->{lock_deadlocks_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    }
+  }
+}
+
+
+package DBD::MSSQL::Server::Memorypool::SystemLevelDataStructures::LockTable;
+package DBD::MSSQL::Server::Memorypool::ProcedureCache;
+package DBD::MSSQL::Server::Memorypool::LogCache;
+package DBD::MSSQL::Server::Memorypool::SystemLevelDataStructures;
+package DBD::MSSQL::Server::Database::Datafile;
+
+use strict;
+use File::Basename;
+
+our @ISA = qw(DBD::MSSQL::Server::Database);
+
+
+{
+  my @datafiles = ();
+  my $initerrors = undef;
+
+  sub add_datafile {
+    push(@datafiles, shift);
+  }
+
+  sub return_datafiles {
+    return reverse
+        sort { $a->{logicalfilename} cmp $b->{logicalfilename} } @datafiles;
+  }
+
+  sub clear_datafiles {
+    @datafiles = ();
+  }
+
+  sub init_datafiles {
+    my %params = @_;
+    my $num_datafiles = 0;
+    if ($params{mode} =~ /server::database::datafile::listdatafiles/) {
+      my @datafileresults = $params{handle}->fetchall_array(q{
+DECLARE @DBInfo TABLE
+( ServerName VARCHAR(100),
+DatabaseName VARCHAR(100),
+FileSizeMB INT,
+LogicalFileName sysname,
+PhysicalFileName NVARCHAR(520),
+Status sysname,
+Updateability sysname,
+RecoveryMode sysname,
+FreeSpaceMB INT,
+FreeSpacePct VARCHAR(7),
+FreeSpacePages INT,
+PollDate datetime)
+
+DECLARE @command VARCHAR(5000)
+
+SELECT @command = 'Use [' + '?' + '] SELECT
+@@servername as ServerName,
+' + '''' + '?' + '''' + ' AS DatabaseName,
+CAST(sysfiles.size/128.0 AS int) AS FileSize,
+sysfiles.name AS LogicalFileName, sysfiles.filename AS PhysicalFileName,
+CONVERT(sysname,DatabasePropertyEx(''?'',''Status'')) AS Status,
+CONVERT(sysname,DatabasePropertyEx(''?'',''Updateability'')) AS Updateability,
+CONVERT(sysname,DatabasePropertyEx(''?'',''Recovery'')) AS RecoveryMode,
+CAST(sysfiles.size/128.0 - CAST(FILEPROPERTY(sysfiles.name, ' + '''' +
+       'SpaceUsed' + '''' + ' ) AS int)/128.0 AS int) AS FreeSpaceMB,
+CAST(100 * (CAST (((sysfiles.size/128.0 -CAST(FILEPROPERTY(sysfiles.name,
+' + '''' + 'SpaceUsed' + '''' + ' ) AS int)/128.0)/(sysfiles.size/128.0))
+AS decimal(4,2))) AS varchar(8)) + ' + '''' + '%' + '''' + ' AS FreeSpacePct,
+GETDATE() as PollDate FROM dbo.sysfiles'
+INSERT INTO @DBInfo
+   (ServerName,
+   DatabaseName,
+   FileSizeMB,
+   LogicalFileName,
+   PhysicalFileName,
+   Status,
+   Updateability,
+   RecoveryMode,
+   FreeSpaceMB,
+   FreeSpacePct,
+   PollDate)
+EXEC sp_MSForEachDB @command
+
+SELECT
+   ServerName,
+   DatabaseName,
+   FileSizeMB,
+   LogicalFileName,
+   PhysicalFileName,
+   Status,
+   Updateability,
+   RecoveryMode,
+   FreeSpaceMB,
+   FreeSpacePct,
+   PollDate
+FROM @DBInfo
+ORDER BY
+   ServerName,
+   DatabaseName
+      });
+      if (DBD::MSSQL::Server::return_first_server()->windows_server()) {
+        fileparse_set_fstype("MSWin32");
+      }
+      foreach (@datafileresults) {
+        my ($servername, $databasename, $filesizemb, $logicalfilename,
+            $physicalfilename, $status, $updateability, $recoverymode,
+            $freespacemb, $freespacepct, $polldate) = @{$_};
+        next if $databasename ne $params{database};
+        if ($params{regexp}) {
+          #next if $params{selectname} &&
+          #    (($name !~ /$params{selectname}/) &&
+          #    (basename($name) !~ /$params{selectname}/));
+          next if $params{selectname} &&
+              ($logicalfilename !~ /$params{selectname}/);
+        } else {
+          #next if $params{selectname} &&
+          #    ((lc $params{selectname} ne lc $name) &&
+          #    (lc $params{selectname} ne lc basename($name)));
+          next if $params{selectname} &&
+              (lc $params{selectname} ne lc $logicalfilename);
+        }
+        my %thisparams = %params;
+        $thisparams{servername} = $servername;
+        $thisparams{databasename} = $databasename;
+        $thisparams{filesizemb} = $filesizemb;
+        $thisparams{logicalfilename} = $logicalfilename;
+        $thisparams{servername} = $servername;
+        $thisparams{status} = $status;
+        $thisparams{updateability} = $updateability;
+        $thisparams{recoverymode} = $recoverymode;
+        $thisparams{freespacemb} = $freespacemb;
+        $thisparams{freespacepct} = $freespacepct;
+        $thisparams{polldate} = $polldate;
+        my $datafile = 
+            DBD::MSSQL::Server::Database::Datafile->new(
+            %thisparams);
+        add_datafile($datafile);
+        $num_datafiles++;
+      }
+    }
+  }
+
+}
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    handle => $params{handle},
+    databasename => $params{databasename},
+    filesizemb => $params{filesizemb},
+    logicalfilename => $params{logicalfilename},
+    physicalfilename => $params{physicalfilename},
+    status => $params{status},
+    updateability => $params{updateability},
+    recoverymode => $params{recoverymode},
+    freespacemb => $params{freespacemb},
+    freespacepct => $params{freespacepct},
+    freespacepages => $params{freespacepages},
+    polldate => $params{polldate},
+    warningrange => $params{warningrange},
+    criticalrange => $params{criticalrange},
+  };
+  bless $self, $class;
+  $self->init(%params);
+  return $self;
+}
+
+sub init { 
+  my $self = shift;
+  my %params = @_;
+  $self->init_nagios();
+  if ($params{mode} =~ /server::database::iobalance/) {
+    if (! defined $self->{phyrds}) {
+      $self->add_nagios_critical(sprintf "unable to read datafile io %s", $@);
+    } else {
+      $params{differenciator} = $self->{path};
+      $self->valdiff(\%params, qw(phyrds phywrts));
+      $self->{io_total} = $self->{delta_phyrds} + $self->{delta_phywrts};
+    }
+  } elsif ($params{mode} =~ /server::database::datafile::iotraffic/) {
+    if (! defined $self->{phyrds}) {
+      $self->add_nagios_critical(sprintf "unable to read datafile io %s", $@);
+    } else {
+      $params{differenciator} = $self->{path};
+      $self->valdiff(\%params, qw(phyrds phywrts));
+      $self->{io_total_per_sec} = ($self->{delta_phyrds} + $self->{delta_phywrts}) /
+          $self->{delta_timestamp};
+    }
+  }
+}
+
+
+sub nagios {
+  my $self = shift;
+  my %params = @_;
+  if (! $self->{nagios_level}) {
+    if ($params{mode} =~ /server::database::datafile::iotraffic/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{io_total_per_sec}, "1000", "5000"),
+          sprintf ("%s: %.2f IO Operations per Second", 
+              $self->{name}, $self->{io_total_per_sec}));
+      $self->add_perfdata(sprintf "'dbf_%s_io_total_per_sec'=%.2f;%d;%d",
+          $self->{name}, $self->{io_total_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    }
+  }
+}
+
+package DBD::MSSQL::Server::Database;
+
+use strict;
+
+our @ISA = qw(DBD::MSSQL::Server);
+
+
+{
+  my @databases = ();
+  my $initerrors = undef;
+
+  sub add_database {
+    push(@databases, shift);
+  }
+
+  sub return_databases {
+    return reverse
+        sort { $a->{name} cmp $b->{name} } @databases;
+  }
+
+  sub init_databases {
+    my %params = @_;
+    my $num_databases = 0;
+    if (($params{mode} =~ /server::database::listdatabases/) ||
+        ($params{mode} =~ /server::database::databasefree/) ||
+        ($params{mode} =~ /server::database::lastbackup/) ||
+        ($params{mode} =~ /server::database::transactions/) ||
+        ($params{mode} =~ /server::database::datafile/)) {
+      my @databaseresult = ();
+      if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+        @databaseresult = $params{handle}->fetchall_array(q{
+          SELECT name, database_id FROM master.sys.databases
+        });
+      } else {
+        #@databaseresult = map {
+        #  [ $_->[0], $_->[3] ] # only name, dbid
+        #} $params{handle}->fetchall_array(q{exec sp_helpdb});
+        @databaseresult = $params{handle}->fetchall_array(q{
+          SELECT name, dbid FROM master.dbo.sysdatabases
+        });
+      }
+      if ($params{mode} =~ /server::database::transactions/) {
+        push(@databaseresult, [ '_Total', 0 ]);
+      }
+      foreach (@databaseresult) {
+        my ($name, $id) = @{$_};
+        next if $params{database} && $name ne $params{database};
+        if ($params{regexp}) {
+          next if $params{selectname} && $name !~ /$params{selectname}/;
+        } else {
+          next if $params{selectname} && lc $params{selectname} ne lc $name;
+        }
+        my %thisparams = %params;
+        $thisparams{name} = $name;
+        $thisparams{id} = $id;
+        my $database = DBD::MSSQL::Server::Database->new(
+            %thisparams);
+        add_database($database);
+        $num_databases++;
+      }
+      if (! $num_databases) {
+        $initerrors = 1;
+        return undef;
+      }
+    } elsif ($params{mode} =~ /server::database::backupage/) {
+      my @databaseresult = ();
+      if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+        @databaseresult = $params{handle}->fetchall_array(q{
+          SELECT
+            a.name, 
+            DATEDIFF(HH, MAX(b.backup_finish_date), GETDATE()),
+            DATEDIFF(MI, MAX(b.backup_start_date), MAX(b.backup_finish_date))
+          FROM sys.sysdatabases a LEFT OUTER JOIN msdb.dbo.backupset b
+          ON b.database_name = a.name
+          GROUP BY a.name 
+          ORDER BY a.name
+        });
+      } else {
+        @databaseresult = $params{handle}->fetchall_array(q{
+          SELECT
+            a.name, 
+            DATEDIFF(HH, MAX(b.backup_finish_date), GETDATE()),
+            DATEDIFF(MI, MAX(b.backup_start_date), MAX(b.backup_finish_date))
+          FROM master.dbo.sysdatabases a LEFT OUTER JOIN msdb.dbo.backupset b
+          ON b.database_name = a.name
+          GROUP BY a.name 
+          ORDER BY a.name 
+        }); 
+      }
+      foreach (sort {
+        if (! defined $b->[1]) {
+          return 1;
+        } elsif (! defined $a->[1]) {
+          return -1;
+        } else {
+          return $a->[1] <=> $b->[1];
+        }
+      } @databaseresult) { 
+        my ($name, $age, $duration) = @{$_};
+        next if $params{database} && $name ne $params{database};
+        if ($params{regexp}) { 
+          next if $params{selectname} && $name !~ /$params{selectname}/;
+        } else {
+          next if $params{selectname} && lc $params{selectname} ne lc $name;
+        }
+        my %thisparams = %params;
+        $thisparams{name} = $name;
+        $thisparams{backup_age} = $age;
+        $thisparams{backup_duration} = $duration;
+        my $database = DBD::MSSQL::Server::Database->new(
+            %thisparams);
+        add_database($database);
+        $num_databases++;
+      }
+    }
+
+  }
+
+}
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    handle => $params{handle},
+    warningrange => $params{warningrange},
+    criticalrange => $params{criticalrange},
+    name => $params{name},
+    id => $params{id},
+    datafiles => [],
+    backup_age => $params{backup_age},
+    backup_duration => $params{backup_duration},
+  };
+  bless $self, $class;
+  $self->init(%params);
+  return $self;
+}
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  $self->init_nagios();
+  if ($params{mode} =~ /server::database::datafile/) {
+    $params{database} = $self->{name};
+    DBD::MSSQL::Server::Database::Datafile::init_datafiles(%params);
+    if (my @datafiles = 
+        DBD::MSSQL::Server::Database::Datafile::return_datafiles()) {
+      $self->{datafiles} = \@datafiles;
+    } else {
+      $self->add_nagios_critical("unable to aquire datafile info");
+    }
+  } elsif ($params{mode} =~ /server::database::databasefree/) {
+    ###################################################################################
+    #                            fuer's museum
+    # 1> sp_spaceused
+    # 2> go
+    # database_name   database_size   unallocated space
+    # master  4.50 MB 1.32 MB
+    # reserved        data    index_size      unused
+    # 2744 KB 1056 KB 1064 KB 624 KB
+    # (return status = 0)
+    #my($database_name, $database_size, $unallocated_space,
+    #    $reserved, $data, $index_size, $unused) =
+    #     $params{handle}->fetchrow_array(
+    #    "USE ".$self->{name}."\nEXEC SP_SPACEUSED"
+    #);
+    # server mgmt studio           sp_spaceused
+    # Currently Allocated Space    database_size       641.94MB
+    # Available Free Space         unallocated space   457.09MB 
+    #$database_size =~ s/MB//g;
+    #$unallocated_space =~ s/MB//g;
+    #$self->{size} = $database_size * 1024 * 1024;
+    #$self->{free} = $unallocated_space * 1024 * 1024;
+    #$self->{percent_free} = $unallocated_space / $database_size * 100;
+    #$self->{used} = $self->{size} - $self->{free};
+    #$self->{maxsize} = "99999999999999999";
+    ###################################################################################
+    my $calc = {};
+    $self->{handle}->execute(q{
+      if object_id('tempdb..#FreeSpace') is null 
+        create table #FreeSpace(  
+          Drive varchar(10),  
+          MB_Free bigint  
+        ) 
+    });
+    $self->{handle}->execute(q{
+      DELETE FROM #FreeSpace
+    });
+    $self->{handle}->execute(q{
+      INSERT INTO #FreeSpace exec master.dbo.xp_fixeddrives
+    });
+    foreach($self->{handle}->fetchall_array(q{
+      SELECT * FROM #FreeSpace
+    })) {
+      $calc->{drive_mb}->{lc $_->[0]} = $_->[1];
+    }
+    #$self->{handle}->execute(q{
+    #  DROP TABLE #FreeSpace
+    #});
+    # Page = 8KB
+    # sysfiles ist sv2000, noch als kompatibilitaetsview vorhanden
+    # dbo.sysfiles kann 2008 durch sys.database_files ersetzt werden?
+    # omeiomeiomei in 2005 ist ein sys.sysindexes compatibility view
+    #   fuer 2000.dbo.sysindexes
+    #   besser ist sys.allocation_units
+    if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+      my $sql = q{
+          SELECT 
+              SUM(CAST(used AS BIGINT)) / 128
+          FROM 
+              [?].sys.sysindexes
+          WHERE
+              indid IN (0,1,255)
+      };
+      #$sql =~ s/\[\?\]/$self->{name}/g;
+      $sql =~ s/\?/$self->{name}/g;
+      $self->{used_mb} = $self->{handle}->fetchrow_array($sql);
+    } else {
+      my $sql = q{
+          SELECT 
+              SUM(CAST(used AS BIGINT)) / 128
+          FROM 
+              [?].dbo.sysindexes
+          WHERE
+              indid IN (0,1,255)
+      };
+      #$sql =~ s/\[\?\]/$self->{name}/g;
+      $sql =~ s/\?/$self->{name}/g;
+      $self->{used_mb} = $self->{handle}->fetchrow_array($sql);
+    }
+    my @fileresult = ();
+    if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+      my $sql = q{
+          SELECT
+              RTRIM(a.name), RTRIM(a.filename), CAST(a.size AS BIGINT),
+              CAST(a.maxsize AS BIGINT), a.growth
+          FROM
+              [?].sys.sysfiles a
+          JOIN
+              [?].sys.sysfilegroups b
+          ON
+              a.groupid = b.groupid
+      };
+      #$sql =~ s/\[\?\]/$self->{name}/g;
+      $sql =~ s/\?/$self->{name}/g;
+      @fileresult = $self->{handle}->fetchall_array($sql);
+    } else {
+      my $sql = q{
+          SELECT
+              RTRIM(a.name), RTRIM(a.filename), CAST(a.size AS BIGINT),
+              CAST(a.maxsize AS BIGINT), a.growth
+          FROM
+              [?].dbo.sysfiles a
+          JOIN
+              [?].dbo.sysfilegroups b
+          ON
+              a.groupid = b.groupid
+      };
+      #$sql =~ s/\[\?\]/$self->{name}/g;
+      $sql =~ s/\?/$self->{name}/g;
+      @fileresult = $self->{handle}->fetchall_array($sql);
+    }
+    foreach(@fileresult) {
+      my($name, $filename, $size, $maxsize, $growth) = @{$_};
+      my $drive = lc substr($filename, 0, 1);
+      $calc->{datafile}->{$name}->{allocsize} = $size / 128;
+      if ($growth == 0) {
+        $calc->{datafile}->{$name}->{maxsize} = $size / 128;
+      } else {
+        if ($maxsize == -1) {
+          $calc->{datafile}->{$name}->{maxsize} =
+              exists $calc->{drive_mb}->{$drive} ?
+                  ($calc->{datafile}->{$name}->{allocsize} + 
+                   $calc->{drive_mb}->{$drive}) : 4 * 1024;
+          # falls die platte nicht gefunden wurde, dann nimm halt 4GB
+        } else {
+          $calc->{datafile}->{$name}->{maxsize} = $maxsize / 128;
+        }
+      }
+      $self->{allocated_mb} += $calc->{datafile}->{$name}->{allocsize};
+      $self->{max_mb} += $calc->{datafile}->{$name}->{maxsize};
+    }
+    $self->{allocated_mb} = $self->{allocated_mb};
+    if ($self->{used_mb} > $self->{allocated_mb}) {
+      # obige used-berechnung liefert manchmal (wenns knapp hergeht) mehr als
+      # den maximal verfuegbaren platz. vermutlich muessen dann
+      # zwecks ermittlung des tatsaechlichen platzverbrauchs 
+      # irgendwelche dbcc updateusage laufen.
+      # egal, wird schon irgendwie stimmen.
+      $self->{used_mb} = $self->{allocated_mb};
+      $self->{estimated} = 1;
+    } else {
+      $self->{estimated} = 0;
+    }
+    $self->{free_mb} = $self->{max_mb} - $self->{used_mb};
+    $self->{free_percent} = 100 * $self->{free_mb} / $self->{max_mb};
+    $self->{allocated_percent} = 100 * $self->{allocated_mb} / $self->{max_mb};
+  } elsif ($params{mode} =~ /^server::database::transactions/) {
+    $self->{transactions_s} = $self->{handle}->get_perf_counter_instance(
+        'SQLServer:Databases', 'Transactions/sec', $self->{name});
+    if (! defined $self->{transactions_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data for $self->{name}");
+    } else {
+      $self->valdiff(\%params, qw(transactions_s));
+      $self->{transactions_per_sec} = $self->{delta_transactions_s} / $self->{delta_timestamp};
+    }
+  }
+}
+
+sub nagios {
+  my $self = shift;
+  my %params = @_;
+  if (! $self->{nagios_level}) {
+    if ($params{mode} =~ /server::database::datafile::listdatafiles/) {
+      foreach (sort { $a->{logicalfilename} cmp $b->{logicalfilename}; }  @{$self->{datafiles}}) {
+	printf "%s\n", $_->{logicalfilename};
+      }
+      $self->add_nagios_ok("have fun");
+    } elsif ($params{mode} =~ /^server::database::transactions/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{transactions_per_sec}, 10000, 50000),
+          sprintf "\n%s has %.4f transactions / sec",
+          $self->{name}, $self->{transactions_per_sec});
+      $self->add_perfdata(sprintf "%s_transactions_per_sec=%.4f;%s;%s",
+          $self->{name}, $self->{transactions_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /server::database::databasefree/) {
+      # ->percent_free
+      # ->free
+      #
+      # ausgabe
+      #   perfdata db_<db>_free_pct
+      #   perfdata db_<db>_free        (real_bytes_max - bytes) + bytes_free  (with units)
+      #   perfdata db_<db>_alloc_free  bytes_free (with units)
+      #
+              # umrechnen der thresholds
+      # ()/%
+      # MB
+      # GB
+      # KB
+      if (($self->{warningrange} && $self->{warningrange} !~ /^\d+[\.\d]*:/) ||
+          ($self->{criticalrange} && $self->{criticalrange} !~ /^\d+[\.\d]*:/)) {
+        $self->add_nagios_unknown("you want an alert if free space is _above_ a threshold????");
+        return;
+      }
+      if (! $params{units}) {
+        $params{units} = "%";
+      }
+      $self->{warning_bytes} = 0;
+      $self->{critical_bytes} = 0;
+      if ($params{units} eq "%") {
+        $self->add_nagios(
+            $self->check_thresholds($self->{free_percent}, "5:", "2:"),
+                sprintf("database %s has %.2f%% free space left",
+                $self->{name}, $self->{free_percent},
+                ($self->{estimated} ? " (estim.)" : ""))
+        );
+        $self->{warningrange} =~ s/://g;
+        $self->{criticalrange} =~ s/://g;
+        $self->add_perfdata(sprintf "\'db_%s_free_pct\'=%.2f%%;%d:;%d:",
+            lc $self->{name},
+            $self->{free_percent},
+            $self->{warningrange}, $self->{criticalrange});
+        $self->add_perfdata(sprintf "\'db_%s_free\'=%dMB;%.2f:;%.2f:;0;%.2f",
+            lc $self->{name},
+            $self->{free_mb},
+            $self->{warningrange} * $self->{max_mb} / 100,
+            $self->{criticalrange} * $self->{max_mb} / 100,
+            $self->{max_mb});
+        $self->add_perfdata(sprintf "\'db_%s_allocated_pct\'=%.2f%%",
+            lc $self->{name},
+            $self->{allocated_percent});
+      } else {
+        my $factor = 1; # default MB
+        if ($params{units} eq "GB") {
+          $factor = 1024;
+        } elsif ($params{units} eq "MB") {
+          $factor = 1;
+        } elsif ($params{units} eq "KB") {
+          $factor = 1 / 1024;
+        }
+        $self->{warningrange} ||= "5:";
+        $self->{criticalrange} ||= "2:";
+        my $saved_warningrange = $self->{warningrange};
+        my $saved_criticalrange = $self->{criticalrange};
+        # : entfernen weil gerechnet werden muss
+        $self->{warningrange} =~ s/://g;
+        $self->{criticalrange} =~ s/://g;
+        $self->{warningrange} = $self->{warningrange} ?
+            $self->{warningrange} * $factor : 5 * $factor;
+        $self->{criticalrange} = $self->{criticalrange} ?
+            $self->{criticalrange} * $factor : 2 * $factor;
+        $self->{percent_warning} = 100 * $self->{warningrange} / $self->{max_mb};
+        $self->{percent_critical} = 100 * $self->{criticalrange} / $self->{max_mb};
+        $self->{warningrange} .= ':';
+        $self->{criticalrange} .= ':';
+        $self->add_nagios(
+            $self->check_thresholds($self->{free_mb}, "5242880:", "1048576:"),
+                sprintf("database %s has %.2f%s free space left", $self->{name},
+                    $self->{free_mb} / $factor, $params{units})
+        );
+        $self->{warningrange} = $saved_warningrange;
+        $self->{criticalrange} = $saved_criticalrange;
+        $self->{warningrange} =~ s/://g;
+        $self->{criticalrange} =~ s/://g;
+        $self->add_perfdata(sprintf "\'db_%s_free_pct\'=%.2f%%;%.2f:;%.2f:",
+            lc $self->{name},
+            $self->{free_percent}, $self->{percent_warning},
+            $self->{percent_critical});
+        $self->add_perfdata(sprintf "\'db_%s_free\'=%.2f%s;%.2f:;%.2f:;0;%.2f",
+            lc $self->{name},
+            $self->{free_mb} / $factor, $params{units},
+            $self->{warningrange},
+            $self->{criticalrange},
+            $self->{max_mb} / $factor);
+        $self->add_perfdata(sprintf "\'db_%s_allocated_pct\'=%.2f%%",
+            lc $self->{name},
+            $self->{allocated_percent});
+      }
+    } elsif ($params{mode} =~ /server::database::backupage/) {
+      if (! defined $self->{backup_age}) { 
+        $self->add_nagios_critical(sprintf "%s was never backupped",
+            $self->{name}); 
+        $self->{backup_age} = 0;
+        $self->{backup_duration} = 0;
+        $self->check_thresholds($self->{backup_age}, 48, 72); # init wg perfdata
+      } else { 
+        $self->add_nagios( 
+            $self->check_thresholds($self->{backup_age}, 48, 72), 
+            sprintf "\n%s backupped %dh ago", $self->{name}, $self->{backup_age});
+      } 
+      $self->add_perfdata(sprintf "'%s_bck_age'=%d;%s;%s", 
+          $self->{name}, $self->{backup_age}, 
+          $self->{warningrange}, $self->{criticalrange}); 
+      $self->add_perfdata(sprintf "'%s_bck_time'=%d", 
+          $self->{name}, $self->{backup_duration}); 
+    } 
+  }
+}
+
+
+
+package DBD::MSSQL::Server;
+
+use strict;
+use Time::HiRes;
+use IO::File;
+use File::Copy 'cp';
+use Data::Dumper;
+
+
+{
+  our $verbose = 0;
+  our $scream = 0; # scream if something is not implemented
+  our $my_modules_dyn_dir = ""; # where we look for self-written extensions
+
+  my @servers = ();
+  my $initerrors = undef;
+
+  sub add_server {
+    push(@servers, shift);
+  }
+
+  sub return_servers {
+    return @servers;
+  }
+  
+  sub return_first_server() {
+    return $servers[0];
+  }
+
+}
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    method => $params{method} || "dbi",
+    hostname => $params{hostname},
+    username => $params{username},
+    password => $params{password},
+    port => $params{port} || 1433,
+    server => $params{server},
+    timeout => $params{timeout},
+    warningrange => $params{warningrange},
+    criticalrange => $params{criticalrange},
+    version => 'unknown',
+    os => 'unknown',
+    servicename => 'unknown',
+    instance => undef,
+    memorypool => undef,
+    databases => [],
+    handle => undef,
+  };
+  bless $self, $class;
+  $self->init_nagios();
+  if ($self->dbconnect(%params)) {
+    #$self->{version} = $self->{handle}->fetchrow_array(
+    #    q{ SELECT SERVERPROPERTY('productversion') });
+    map {
+        $self->{os} = $1 if /Windows (.*)/; 
+        $self->{version} = $1 if /SQL Server.*\-\s*([\d\.]+)/;
+    } $self->{handle}->fetchrow_array(
+        q{ SELECT @@VERSION });
+    $self->{dbuser} = $self->{handle}->fetchrow_array(
+        q{ SELECT SYSTEM_USER });  # maybe SELECT SUSER_SNAME()
+    $self->{servicename} = $self->{handle}->fetchrow_array(
+        q{ SELECT @@SERVICENAME });  
+    if (lc $self->{servicename} ne 'mssqlserver') {
+      # braucht man fuer abfragen von dm_os_performance_counters
+      # object_name ist entweder "SQLServer:Buffer Node" oder z.b. "MSSQL$OASH: Buffer Node"
+      $self->{servicename} = 'MSSQL$'.$self->{servicename};
+    } else {
+      $self->{servicename} = 'SQLServer';
+    }
+    DBD::MSSQL::Server::add_server($self);
+    $self->init(%params);
+  }
+  return $self;
+}
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  $params{handle} = $self->{handle};
+  if ($params{mode} =~ /^server::memorypool/) {
+    $self->{memorypool} = DBD::MSSQL::Server::Memorypool->new(%params);
+  } elsif ($params{mode} =~ /^server::database/) {
+    DBD::MSSQL::Server::Database::init_databases(%params);
+    if (my @databases =
+        DBD::MSSQL::Server::Database::return_databases()) {
+      $self->{databases} = \@databases;
+    } else {
+      $self->add_nagios_critical("unable to aquire database info");
+    }
+  } elsif ($params{mode} =~ /^server::connectiontime/) {
+    $self->{connection_time} = $self->{tac} - $self->{tic};
+  } elsif ($params{mode} =~ /^server::cpubusy/) {
+    if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+      ($self->{secs_busy}) = $self->{handle}->fetchrow_array(q{
+          SELECT ((@@CPU_BUSY * CAST(@@TIMETICKS AS FLOAT)) /
+              (SELECT (CAST(CPU_COUNT AS FLOAT) / CAST(HYPERTHREAD_RATIO AS FLOAT)) FROM sys.dm_os_sys_info) /
+              1000000)
+      });
+      $self->valdiff(\%params, qw(secs_busy));
+      if (defined $self->{secs_busy}) {
+        $self->{cpu_busy} = 100 *
+            $self->{delta_secs_busy} / $self->{delta_timestamp};
+      } else {
+        $self->add_nagios_critical("got no cputime from dm_os_sys_info");
+      }
+    } else {
+      #$self->requires_version('9');
+      my @monitor = $params{handle}->exec_sp_1hash(q{exec sp_monitor});
+      foreach (@monitor) {
+        if ($_->[0] eq 'cpu_busy') {
+          if ($_->[1] =~ /(\d+)%/) {
+            $self->{cpu_busy} = $1;
+          }
+        }
+      }
+      self->requires_version('9') unless defined $self->{cpu_busy};
+    }
+  } elsif ($params{mode} =~ /^server::iobusy/) {
+    if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+      ($self->{secs_busy}) = $self->{handle}->fetchrow_array(q{
+          SELECT ((@@IO_BUSY * CAST(@@TIMETICKS AS FLOAT)) /
+              (SELECT (CAST(CPU_COUNT AS FLOAT) / CAST(HYPERTHREAD_RATIO AS FLOAT)) FROM sys.dm_os_sys_info) /
+              1000000)
+      });
+      $self->valdiff(\%params, qw(secs_busy));
+      if (defined $self->{secs_busy}) {
+        $self->{io_busy} = 100 *
+            $self->{delta_secs_busy} / $self->{delta_timestamp};
+      } else {
+        $self->add_nagios_critical("got no iotime from dm_os_sys_info");
+      }
+    } else {
+      #$self->requires_version('9');
+      my @monitor = $params{handle}->exec_sp_1hash(q{exec sp_monitor});
+      foreach (@monitor) {
+        if ($_->[0] eq 'io_busy') {
+          if ($_->[1] =~ /(\d+)%/) {
+            $self->{io_busy} = $1;
+          }
+        }
+      }
+      self->requires_version('9') unless defined $self->{io_busy};
+    }
+  } elsif ($params{mode} =~ /^server::fullscans/) {
+    $self->{cnt_full_scans_s} = $self->{handle}->get_perf_counter(
+        'SQLServer:Access Methods', 'Full Scans/sec');
+    if (! defined $self->{cnt_full_scans_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(cnt_full_scans_s));
+      $self->{full_scans_per_sec} = $self->{delta_cnt_full_scans_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /^server::latch::waittime/) {
+    $self->{latch_wait_time} = $self->{handle}->get_perf_counter(
+        "SQLServer:Latches", "Average Latch Wait Time (ms)");
+    $self->{latch_wait_time_base} = $self->{handle}->get_perf_counter(
+        "SQLServer:Latches", "Average Latch Wait Time Base");
+    if (! defined $self->{latch_wait_time}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    }
+    $self->{latch_wait_time} = $self->{latch_wait_time} / $self->{latch_wait_time_base};
+  } elsif ($params{mode} =~ /^server::latch::waits/) {
+    $self->{latch_waits_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:Latches", "Latch Waits/sec");
+    if (! defined $self->{latch_waits_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(latch_waits_s));
+      $self->{latch_waits_per_sec} = $self->{delta_latch_waits_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /^server::sql::.*compilations/) {
+    $self->{recompilations_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:SQL Statistics", "SQL Re-Compilations/sec");
+    $self->{compilations_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:SQL Statistics", "SQL Compilations/sec");
+    if (! defined $self->{recompilations_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(recompilations_s compilations_s));
+      # http://www.sqlmag.com/Articles/ArticleID/40925/pg/3/3.html
+      # http://www.grumpyolddba.co.uk/monitoring/Performance%20Counter%20Guidance%20-%20SQL%20Server.htm
+      $self->{delta_initial_compilations_s} = $self->{delta_compilations_s} - 
+          $self->{delta_recompilations_s};
+      $self->{initial_compilations_per_sec} = 
+          $self->{delta_initial_compilations_s} / $self->{delta_timestamp};
+      $self->{recompilations_per_sec} = 
+          $self->{delta_recompilations_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /^server::batchrequests/) {
+    $self->{batch_requests_s} = $self->{handle}->get_perf_counter(
+        "SQLServer:SQL Statistics", "Batch requests/sec");
+    if (! defined $self->{batch_requests_s}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    } else {
+      $self->valdiff(\%params, qw(batch_requests_s));
+      $self->{batch_requests_per_sec} = $self->{delta_batch_requests_s} / $self->{delta_timestamp};
+    }
+  } elsif ($params{mode} =~ /^server::totalmemory/) {
+    $self->{total_memory} = $self->{handle}->get_perf_counter(
+        "SQLServer:Memory Manager", "Total Server Memory (KB)");
+    if (! defined $self->{total_memory}) {
+      $self->add_nagios_unknown("unable to aquire counter data");
+    }
+  } elsif ($params{mode} =~ /^server::connectedusers/) {
+    $self->{connectedusers} = $self->{handle}->fetchrow_array(q{
+      SELECT
+          COUNT(*)
+      FROM
+          master..sysprocesses
+      WHERE
+          spid > ?
+    }, 51);
+    if (! defined $self->{connectedusers}) {
+      $self->add_nagios_unknown("unable to count connected users");
+    }
+  } elsif ($params{mode} =~ /^server::sql/) {
+    @{$self->{genericsql}} =
+        $self->{handle}->fetchrow_array($params{selectname});
+    if ((scalar(@{$self->{genericsql}}) == 0) ||
+        (! (defined $self->{genericsql} &&
+        (scalar(grep { /^\s*\d+\.{0,1}\d*\s*$/ } @{$self->{genericsql}})) ==
+        scalar(@{$self->{genericsql}})))) {
+      $self->add_nagios_unknown(sprintf "got no valid response for %s",
+          $params{selectname});
+    } else {
+      # name2 in array
+      # units in array
+    }
+  } elsif ($params{mode} =~ /^my::([^:.]+)/) {
+    my $class = $1;
+    my $loaderror = undef;
+    substr($class, 0, 1) = uc substr($class, 0, 1);
+    foreach my $libpath (split(":", $DBD::MSSQL::Server::my_modules_dyn_dir)) {
+      foreach my $extmod (glob $libpath."/CheckMSSQLHealth*.pm") {
+        eval {
+          $self->trace(sprintf "loading module %s", $extmod);
+          require $extmod;
+        };
+        if ($@) {
+          $loaderror = $extmod;
+          $self->trace(sprintf "failed loading module %s: %s", $extmod, $@);
+        }
+      }
+    }
+    my $obj = {
+        handle => $params{handle},
+        warningrange => $params{warningrange},
+        criticalrange => $params{criticalrange},
+    };
+    bless $obj, "My$class";
+    $self->{my} = $obj;
+    if ($self->{my}->isa("DBD::MSSQL::Server")) {
+      my $dos_init = $self->can("init");
+      my $dos_nagios = $self->can("nagios");
+      my $my_init = $self->{my}->can("init");
+      my $my_nagios = $self->{my}->can("nagios");
+      if ($my_init == $dos_init) {
+          $self->add_nagios_unknown(
+              sprintf "Class %s needs an init() method", ref($self->{my}));
+      } elsif ($my_nagios == $dos_nagios) {
+          $self->add_nagios_unknown(
+              sprintf "Class %s needs a nagios() method", ref($self->{my}));
+      } else {
+        $self->{my}->init_nagios(%params);
+        $self->{my}->init(%params);
+      }
+    } else {
+      $self->add_nagios_unknown(
+          sprintf "Class %s is not a subclass of DBD::MSSQL::Server%s", 
+              ref($self->{my}),
+              $loaderror ? sprintf " (syntax error in %s?)", $loaderror : "" );
+    }
+  } else {
+    printf "broken mode %s\n", $params{mode};
+  }
+}
+
+sub dump {
+  my $self = shift;
+  my $message = shift || "";
+  printf "%s %s\n", $message, Data::Dumper::Dumper($self);
+}
+
+sub nagios {
+  my $self = shift;
+  my %params = @_;
+  if (! $self->{nagios_level}) {
+    if ($params{mode} =~ /^server::instance/) {
+      $self->{instance}->nagios(%params);
+      $self->merge_nagios($self->{instance});
+    } elsif ($params{mode} =~ /server::database::listdatabases/) {
+      foreach (sort { $a->{name} cmp $b->{name}; }  @{$self->{databases}}) {
+        printf "%s\n", $_->{name};
+      }
+      $self->add_nagios_ok("have fun");
+    } elsif ($params{mode} =~ /^server::database/) {
+      foreach (@{$self->{databases}}) {
+        $_->nagios(%params);
+        $self->merge_nagios($_);
+      }
+    } elsif ($params{mode} =~ /^server::database/) {
+    } elsif ($params{mode} =~ /^server::lock/) {
+      foreach (@{$self->{locks}}) {
+        $_->nagios(%params);
+        $self->merge_nagios($_);
+      }
+    } elsif ($params{mode} =~ /^server::memorypool/) {
+      $self->{memorypool}->nagios(%params);
+      $self->merge_nagios($self->{memorypool});
+    } elsif ($params{mode} =~ /^server::connectiontime/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{connection_time}, 1, 5),
+          sprintf "%.2f seconds to connect as %s",
+              $self->{connection_time}, $self->{dbuser});
+      $self->add_perfdata(sprintf "connection_time=%.2f;%d;%d",
+          $self->{connection_time},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::cpubusy/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{cpu_busy}, 80, 90),
+          sprintf "CPU busy %.2f%%", $self->{cpu_busy});
+      $self->add_perfdata(sprintf "cpu_busy=%.2f;%s;%s",
+          $self->{cpu_busy},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::iobusy/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{io_busy}, 80, 90),
+          sprintf "IO busy %.2f%%", $self->{io_busy});
+      $self->add_perfdata(sprintf "io_busy=%.2f;%s;%s",
+          $self->{io_busy},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::fullscans/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{full_scans_per_sec}, 100, 500),
+          sprintf "%.2f full table scans / sec", $self->{full_scans_per_sec});
+      $self->add_perfdata(sprintf "full_scans_per_sec=%.2f;%s;%s",
+          $self->{full_scans_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::latch::waits/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{latch_waits_per_sec}, 10, 50),
+          sprintf "%.2f latches / sec have to wait", $self->{latch_waits_per_sec});
+      $self->add_perfdata(sprintf "latch_waits_per_sec=%.2f;%s;%s",
+          $self->{latch_waits_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::latch::waittime/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{latch_wait_time}, 1, 5),
+          sprintf "latches have to wait %.2f ms avg", $self->{latch_wait_time});
+      $self->add_perfdata(sprintf "latch_avg_wait_time=%.2fms;%s;%s",
+          $self->{latch_wait_time},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::sql::recompilations/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{recompilations_per_sec}, 1, 10),
+          sprintf "%.2f SQL recompilations / sec", $self->{recompilations_per_sec});
+      $self->add_perfdata(sprintf "sql_recompilations_per_sec=%.2f;%s;%s",
+          $self->{recompilations_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::sql::initcompilations/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{initial_compilations_per_sec}, 100, 200),
+          sprintf "%.2f initial compilations / sec", $self->{initial_compilations_per_sec});
+      $self->add_perfdata(sprintf "sql_initcompilations_per_sec=%.2f;%s;%s",
+          $self->{initial_compilations_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::batchrequests/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{batch_requests_per_sec}, 100, 200),
+          sprintf "%.2f batch requests / sec", $self->{batch_requests_per_sec});
+      $self->add_perfdata(sprintf "batch_requests_per_sec=%.2f;%s;%s",
+          $self->{batch_requests_per_sec},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::totalmemory/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{total_memory}, 1000, 5000),
+          sprintf "total server memory %ld", $self->{total_memory});
+      $self->add_perfdata(sprintf "total_server_memory=%ld;%s;%s",
+          $self->{total_memory},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::connectedusers/) {
+      $self->add_nagios(
+          $self->check_thresholds($self->{connectedusers}, 50, 80),
+          sprintf "%d connected users", $self->{connectedusers});
+      $self->add_perfdata(sprintf "connected_users=%d;%s;%s",
+          $self->{connectedusers},
+          $self->{warningrange}, $self->{criticalrange});
+    } elsif ($params{mode} =~ /^server::sql/) {
+      $self->add_nagios(
+          # the first item in the list will trigger the threshold values
+          $self->check_thresholds($self->{genericsql}[0], 1, 5),
+              sprintf "%s: %s%s",
+              $params{name2} ? lc $params{name2} : lc $params{selectname},
+              # float as float, integers as integers
+              join(" ", map {
+                  (sprintf("%d", $_) eq $_) ? $_ : sprintf("%f", $_)
+              } @{$self->{genericsql}}),
+              $params{units} ? $params{units} : "");
+      my $i = 0;
+      # workaround... getting the column names from the database would be nicer
+      my @names2_arr = split(/\s+/, $params{name2});
+      foreach my $t (@{$self->{genericsql}}) {
+        $self->add_perfdata(sprintf "\'%s\'=%s%s;%s;%s",
+            $names2_arr[$i] ? lc $names2_arr[$i] : lc $params{selectname},
+            # float as float, integers as integers
+            (sprintf("%d", $t) eq $t) ? $t : sprintf("%f", $t),
+            $params{units} ? $params{units} : "",
+	    ($i == 0) ? $self->{warningrange} : "",
+            ($i == 0) ? $self->{criticalrange} : ""
+        );
+        $i++;
+      }
+    } elsif ($params{mode} =~ /^my::([^:.]+)/) {
+      $self->{my}->nagios(%params);
+      $self->merge_nagios($self->{my});
+    }
+  }
+}
+
+
+sub init_nagios {
+  my $self = shift;
+  no strict 'refs';
+  if (! ref($self)) {
+    my $nagiosvar = $self."::nagios";
+    my $nagioslevelvar = $self."::nagios_level";
+    $$nagiosvar = {
+      messages => {
+        0 => [],
+        1 => [],
+        2 => [],
+        3 => [],
+      },
+      perfdata => [],
+    };
+    $$nagioslevelvar = $ERRORS{OK},
+  } else {
+    $self->{nagios} = {
+      messages => {
+        0 => [],
+        1 => [],
+        2 => [],
+        3 => [],
+      },
+      perfdata => [],
+    };
+    $self->{nagios_level} = $ERRORS{OK},
+  }
+}
+
+sub check_thresholds {
+  my $self = shift;
+  my $value = shift;
+  my $defaultwarningrange = shift;
+  my $defaultcriticalrange = shift;
+  my $level = $ERRORS{OK};
+  $self->{warningrange} = defined $self->{warningrange} ?
+      $self->{warningrange} : $defaultwarningrange;
+  $self->{criticalrange} = defined $self->{criticalrange} ?
+      $self->{criticalrange} : $defaultcriticalrange;
+  if ($self->{warningrange} !~ /:/ && $self->{criticalrange} !~ /:/) {
+    # warning = 10, critical = 20, warn if > 10, crit if > 20
+    $level = $ERRORS{WARNING} if $value > $self->{warningrange};
+    $level = $ERRORS{CRITICAL} if $value > $self->{criticalrange};
+  } elsif ($self->{warningrange} =~ /(\d+):/ && 
+      $self->{criticalrange} =~ /(\d+):/) {
+    # warning = 98:, critical = 95:, warn if < 98, crit if < 95
+    $self->{warningrange} =~ /(\d+):/;
+    $level = $ERRORS{WARNING} if $value < $1;
+    $self->{criticalrange} =~ /(\d+):/;
+    $level = $ERRORS{CRITICAL} if $value < $1;
+  }
+  return $level;
+  #
+  # syntax error must be reported with returncode -1
+  #
+}
+
+sub add_nagios {
+  my $self = shift;
+  my $level = shift;
+  my $message = shift;
+  push(@{$self->{nagios}->{messages}->{$level}}, $message);
+  # recalc current level
+  foreach my $llevel qw(CRITICAL WARNING UNKNOWN OK) {
+    if (scalar(@{$self->{nagios}->{messages}->{$ERRORS{$llevel}}})) {
+      $self->{nagios_level} = $ERRORS{$llevel};
+    }
+  }
+}
+
+sub add_nagios_ok {
+  my $self = shift;
+  my $message = shift;
+  $self->add_nagios($ERRORS{OK}, $message);
+}
+
+sub add_nagios_warning {
+  my $self = shift;
+  my $message = shift;
+  $self->add_nagios($ERRORS{WARNING}, $message);
+}
+
+sub add_nagios_critical {
+  my $self = shift;
+  my $message = shift;
+  $self->add_nagios($ERRORS{CRITICAL}, $message);
+}
+
+sub add_nagios_unknown {
+  my $self = shift;
+  my $message = shift;
+  $self->add_nagios($ERRORS{UNKNOWN}, $message);
+}
+
+sub add_perfdata {
+  my $self = shift;
+  my $data = shift;
+  push(@{$self->{nagios}->{perfdata}}, $data);
+}
+
+sub merge_nagios {
+  my $self = shift;
+  my $child = shift;
+  foreach my $level (0..3) {
+    foreach (@{$child->{nagios}->{messages}->{$level}}) {
+      $self->add_nagios($level, $_);
+    }
+    #push(@{$self->{nagios}->{messages}->{$level}},
+    #    @{$child->{nagios}->{messages}->{$level}});
+  }
+  push(@{$self->{nagios}->{perfdata}}, @{$child->{nagios}->{perfdata}});
+}
+
+
+sub calculate_result {
+  my $self = shift;
+  if ($ENV{NRPE_MULTILINESUPPORT} && 
+      length join(" ", @{$self->{nagios}->{perfdata}}) > 200) {
+    foreach my $level ("CRITICAL", "WARNING", "UNKNOWN", "OK") {
+      # first the bad news
+      if (scalar(@{$self->{nagios}->{messages}->{$ERRORS{$level}}})) {
+        $self->{nagios_message} .=
+            "\n".join("\n", @{$self->{nagios}->{messages}->{$ERRORS{$level}}});
+      }
+    }
+    $self->{nagios_message} =~ s/^\n//g;
+    $self->{perfdata} = join("\n", @{$self->{nagios}->{perfdata}});
+  } else {
+    foreach my $level ("CRITICAL", "WARNING", "UNKNOWN", "OK") {
+      # first the bad news
+      if (scalar(@{$self->{nagios}->{messages}->{$ERRORS{$level}}})) {
+        $self->{nagios_message} .= 
+            join(", ", @{$self->{nagios}->{messages}->{$ERRORS{$level}}}).", ";
+      }
+    }
+    $self->{nagios_message} =~ s/, $//g;
+    $self->{perfdata} = join(" ", @{$self->{nagios}->{perfdata}});
+  }
+  foreach my $level ("OK", "UNKNOWN", "WARNING", "CRITICAL") {
+    if (scalar(@{$self->{nagios}->{messages}->{$ERRORS{$level}}})) {
+      $self->{nagios_level} = $ERRORS{$level};
+    }
+  }
+}
+
+sub debug {
+  my $self = shift;
+  my $msg = shift;
+  if ($DBD::MSSQL::Server::verbose) {
+    printf "%s %s\n", $msg, ref($self);
+  }
+}
+
+sub dbconnect {
+  my $self = shift;
+  my %params = @_;
+  my $retval = undef;
+  $self->{tic} = Time::HiRes::time();
+  $self->{handle} = DBD::MSSQL::Server::Connection->new(%params);
+  if ($self->{handle}->{errstr}) {
+    if ($self->{handle}->{errstr} eq "alarm\n") {
+      $self->add_nagios($ERRORS{CRITICAL},
+          sprintf "connection could not be established within %d seconds",
+              $self->{timeout});
+    } else {
+      $self->add_nagios($ERRORS{CRITICAL},
+          sprintf "cannot connect to %s. %s",
+          ($self->{server} ? $self->{server} :
+          ($self->{hostname} ? $self->{hostname} : "unknown host")),
+          $self->{handle}->{errstr});
+      $retval = undef;
+    }
+  } else {
+    $retval = $self->{handle};
+  }
+  $self->{tac} = Time::HiRes::time();
+  return $retval;
+}
+
+sub trace {
+  my $self = shift;
+  my $format = shift;
+  if (! @_) {
+    # falls im sql-statement % vorkommen. sonst krachts im printf
+    $format =~ s/%/%%/g;
+  }
+  $self->{trace} = -f "/tmp/check_mssql_health.trace" ? 1 : 0;
+  if ($DBD::MSSQL::Server::verbose) {
+    printf("%s: ", scalar localtime);
+    printf($format, @_);
+  }
+  if ($self->{trace}) {
+    my $logfh = new IO::File;
+    $logfh->autoflush(1);
+    if ($logfh->open("/tmp/check_mssql_health.trace", "a")) {
+      $logfh->printf("%s: ", scalar localtime);
+      $logfh->printf($format, @_);
+      $logfh->printf("\n");
+      $logfh->close();
+    }
+  }
+}
+
+sub DESTROY {
+  my $self = shift;
+  my $handle1 = "null";
+  my $handle2 = "null";
+  if (defined $self->{handle}) {
+    $handle1 = ref($self->{handle});
+    if (defined $self->{handle}->{handle}) {
+      $handle2 = ref($self->{handle}->{handle});
+    }
+  }
+  $self->trace(sprintf "DESTROY %s with handle %s %s", ref($self), $handle1, $handle2);
+  if (ref($self) eq "DBD::MSSQL::Server") {
+  }
+  $self->trace(sprintf "DESTROY %s exit with handle %s %s", ref($self), $handle1, $handle2);
+  if (ref($self) eq "DBD::MSSQL::Server") {
+    #printf "humpftata\n";
+  }
+}
+
+sub save_state {
+  my $self = shift;
+  my %params = @_;
+  my $extension = "";
+  mkdir $params{statefilesdir} unless -d $params{statefilesdir};
+  my $statefile = sprintf "%s/%s_%s", 
+      $params{statefilesdir}, ($params{hostname} || $params{server}), $params{mode};
+  $extension .= $params{differenciator} ? "_".$params{differenciator} : "";
+  $extension .= $params{port} ? "_".$params{port} : "";
+  $extension .= $params{database} ? "_".$params{database} : "";
+  $extension .= $params{name} ? "_".$params{name} : "";
+  $extension =~ s/\//_/g;
+  $extension =~ s/\(/_/g;
+  $extension =~ s/\)/_/g;
+  $extension =~ s/\*/_/g;
+  $extension =~ s/\s/_/g;
+  $statefile .= $extension;
+  $statefile = lc $statefile;
+  open(STATE, ">$statefile");
+  if ((ref($params{save}) eq "HASH") && exists $params{save}->{timestamp}) {
+    $params{save}->{localtime} = scalar localtime $params{save}->{timestamp};
+  }
+  printf STATE Data::Dumper::Dumper($params{save});
+  close STATE;
+  $self->debug(sprintf "saved %s to %s",
+      Data::Dumper::Dumper($params{save}), $statefile);
+}
+
+sub load_state {
+  my $self = shift;
+  my %params = @_;
+  my $extension = "";
+  my $statefile = sprintf "%s/%s_%s", 
+      $params{statefilesdir}, ($params{hostname} || $params{server}), $params{mode};
+  $extension .= $params{differenciator} ? "_".$params{differenciator} : "";
+  $extension .= $params{port} ? "_".$params{port} : "";
+  $extension .= $params{database} ? "_".$params{database} : "";
+  $extension .= $params{name} ? "_".$params{name} : "";
+  $extension =~ s/\//_/g;
+  $extension =~ s/\(/_/g;
+  $extension =~ s/\)/_/g;
+  $extension =~ s/\*/_/g;
+  $extension =~ s/\s/_/g;
+  $statefile .= $extension;
+  $statefile = lc $statefile;
+  if ( -f $statefile) {
+    our $VAR1;
+    eval {
+      require $statefile;
+    };
+    if($@) {
+printf "rumms\n";
+    }
+    $self->debug(sprintf "load %s", Data::Dumper::Dumper($VAR1));
+    return $VAR1;
+  } else {
+    return undef;
+  }
+}
+
+sub valdiff {
+  my $self = shift;
+  my $pparams = shift;
+  my %params = %{$pparams};
+  my @keys = @_;
+  my $last_values = $self->load_state(%params) || eval {
+    my $empty_events = {};
+    foreach (@keys) {
+      $empty_events->{$_} = 0;
+    }
+    $empty_events->{timestamp} = 0;
+    $empty_events;
+  };
+  foreach (@keys) {
+    $last_values->{$_} = 0 if ! exists $last_values->{$_};
+    if ($self->{$_} >= $last_values->{$_}) {
+      $self->{'delta_'.$_} = $self->{$_} - $last_values->{$_};
+    } else {
+      # vermutlich db restart und zaehler alle auf null
+      $self->{'delta_'.$_} = $self->{$_};
+    }
+    $self->debug(sprintf "delta_%s %f", $_, $self->{'delta_'.$_});
+  }
+  $self->{'delta_timestamp'} = time - $last_values->{timestamp};
+  $params{save} = eval {
+    my $empty_events = {};
+    foreach (@keys) {
+      $empty_events->{$_} = $self->{$_};
+    }
+    $empty_events->{timestamp} = time;
+    $empty_events;
+  };
+  $self->save_state(%params);
+}
+
+sub requires_version {
+  my $self = shift;
+  my $version = shift;
+  my @instances = DBD::MSSQL::Server::return_servers();
+  my $instversion = $instances[0]->{version};
+  if (! $self->version_is_minimum($version)) {
+    $self->add_nagios($ERRORS{UNKNOWN}, 
+        sprintf "not implemented/possible for MSSQL release %s", $instversion);
+  }
+}
+
+sub version_is_minimum {
+  # the current version is newer or equal
+  my $self = shift;
+  my $version = shift;
+  my $newer = 1;
+  my @instances = DBD::MSSQL::Server::return_servers();
+  my @v1 = map { $_ eq "x" ? 0 : $_ } split(/\./, $version);
+  my @v2 = split(/\./, $instances[0]->{version});
+  if (scalar(@v1) > scalar(@v2)) {
+    push(@v2, (0) x (scalar(@v1) - scalar(@v2)));
+  } elsif (scalar(@v2) > scalar(@v1)) {
+    push(@v1, (0) x (scalar(@v2) - scalar(@v1)));
+  }
+  foreach my $pos (0..$#v1) {
+    if ($v2[$pos] > $v1[$pos]) {
+      $newer = 1;
+      last;
+    } elsif ($v2[$pos] < $v1[$pos]) {
+      $newer = 0;
+      last;
+    }
+  }
+  #printf STDERR "check if %s os minimum %s\n", join(".", @v2), join(".", @v1);
+  return $newer;
+}
+
+sub instance_rac {
+  my $self = shift;
+  my @instances = DBD::MSSQL::Server::return_servers();
+  return (lc $instances[0]->{parallel} eq "yes") ? 1 : 0;
+}
+
+sub instance_thread {
+  my $self = shift;
+  my @instances = DBD::MSSQL::Server::return_servers();
+  return $instances[0]->{thread};
+}
+
+sub windows_server {
+  my $self = shift;
+  my @instances = DBD::MSSQL::Server::return_servers();
+  if ($instances[0]->{os} =~ /Win/i) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+sub system_vartmpdir {
+  my $self = shift;
+  if ($^O =~ /MSWin/) {
+    return $self->system_tmpdir();
+  } else {
+    return "/var/tmp/check_mssql_health";
+  }
+}
+
+sub system_oldvartmpdir {
+  my $self = shift;
+  return "/tmp";
+}
+
+sub system_tmpdir {
+  my $self = shift;
+  if ($^O =~ /MSWin/) {
+    return $ENV{TEMP} if defined $ENV{TEMP};
+    return $ENV{TMP} if defined $ENV{TMP};
+    return File::Spec->catfile($ENV{windir}, 'Temp')
+        if defined $ENV{windir};
+    return 'C:\Temp';
+  } else {
+    return "/tmp";
+  }
+}
+
+
+package DBD::MSSQL::Server::Connection;
+
+use strict;
+
+our @ISA = qw(DBD::MSSQL::Server);
+
+
+sub new {
+  my $class = shift;
+  my %params = @_;
+  my $self = {
+    mode => $params{mode},
+    timeout => $params{timeout},
+    method => $params{method} || "dbi",
+    hostname => $params{hostname},
+    username => $params{username},
+    password => $params{password},
+    port => $params{port} || 1433,
+    server => $params{server},
+    handle => undef,
+  };
+  bless $self, $class;
+  if ($params{method} eq "dbi") {
+    bless $self, "DBD::MSSQL::Server::Connection::Dbi";
+  } elsif ($params{method} eq "tsql") {
+    bless $self, "DBD::MSSQL::Server::Connection::Tsql";
+  } elsif ($params{method} eq "sqlrelay") {
+    bless $self, "DBD::MSSQL::Server::Connection::Sqlrelay";
+  }
+  $self->init(%params);
+  return $self;
+}
+
+sub get_instance_names {
+  my $self = shift;
+  my $object_name = shift;
+  my $servicename = DBD::MSSQL::Server::return_first_server()->{servicename};
+  if ($object_name =~ /SQLServer:(.*)/) {
+    $object_name = $servicename.':'.$1;
+  }
+  if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+    return $self->fetchall_array(q{
+        SELECT
+            DISTINCT instance_name
+        FROM
+            sys.dm_os_performance_counters
+        WHERE
+            object_name = ?
+    }, $object_name);
+  } else {
+    return $self->fetchall_array(q{
+        SELECT
+            DISTINCT instance_name
+        FROM
+            master.dbo.sysperfinfo
+        WHERE
+            object_name = ?
+    }, $object_name);
+  }
+}
+
+sub get_perf_counter {
+  my $self = shift;
+  my $object_name = shift;
+  my $counter_name = shift;
+  my $servicename = DBD::MSSQL::Server::return_first_server()->{servicename};
+  if ($object_name =~ /SQLServer:(.*)/) {
+    $object_name = $servicename.':'.$1;
+  }
+  if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+    return $self->fetchrow_array(q{
+        SELECT
+            cntr_value
+        FROM
+            sys.dm_os_performance_counters
+        WHERE
+            counter_name = ? AND
+            object_name = ?
+    }, $counter_name, $object_name);
+  } else {
+    return $self->fetchrow_array(q{
+        SELECT
+            cntr_value
+        FROM
+            master.dbo.sysperfinfo
+        WHERE
+            counter_name = ? AND
+            object_name = ?
+    }, $counter_name, $object_name);
+  }
+}
+
+sub get_perf_counter_instance {
+  my $self = shift;
+  my $object_name = shift;
+  my $counter_name = shift;
+  my $instance_name = shift;
+  my $servicename = DBD::MSSQL::Server::return_first_server()->{servicename};
+  if ($object_name =~ /SQLServer:(.*)/) {
+    $object_name = $servicename.':'.$1;
+  }
+  if (DBD::MSSQL::Server::return_first_server()->version_is_minimum("9.x")) {
+    return $self->fetchrow_array(q{
+        SELECT
+            cntr_value
+        FROM
+            sys.dm_os_performance_counters
+        WHERE
+            counter_name = ? AND
+            object_name = ? AND
+            instance_name = ?
+    }, $counter_name, $object_name, $instance_name);
+  } else {
+    return $self->fetchrow_array(q{
+        SELECT
+            cntr_value
+        FROM
+            master.dbo.sysperfinfo
+        WHERE
+            counter_name = ? AND
+            object_name = ? AND
+            instance_name = ?
+    }, $counter_name, $object_name, $instance_name);
+  }
+}
+
+package DBD::MSSQL::Server::Connection::Dbi;
+
+use strict;
+use Net::Ping;
+
+our @ISA = qw(DBD::MSSQL::Server::Connection);
+
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  my $retval = undef;
+  if ($self->{mode} =~ /^server::tnsping/) {
+    # erstmal reserviert fuer irgendeinen tcp-connect
+    if (! $self->{connect}) {
+      $self->{errstr} = "Please specify a database";
+    } else {
+      $self->{sid} = $self->{connect};
+      $self->{username} ||= time;  # prefer an existing user
+      $self->{password} = time;
+    }
+  } else {
+    if ((! $self->{hostname} && ! $self->{server}) ||
+        ! $self->{username} || ! $self->{password}) {
+      $self->{errstr} = "Please specify hostname or server, username and password";
+      return undef;
+    }
+    $self->{dsn} = "DBI:Sybase:";
+    if ($self->{hostname}) {
+      $self->{dsn} .= sprintf ";host=%s", $self->{hostname};
+      $self->{dsn} .= sprintf ";port=%s", $self->{port};
+    } else {
+      $self->{dsn} .= sprintf ";server=%s", $self->{server};
+    }
+  }
+  if (! exists $self->{errstr}) {
+    eval {
+      require DBI;
+      use POSIX ':signal_h';
+      local $SIG{'ALRM'} = sub {
+        die "alarm\n";
+      };
+      my $mask = POSIX::SigSet->new( SIGALRM );
+      my $action = POSIX::SigAction->new(
+          sub { die "alarm\n" ; }, $mask);
+      my $oldaction = POSIX::SigAction->new();
+      sigaction(SIGALRM ,$action ,$oldaction );
+      alarm($self->{timeout} - 1); # 1 second before the global unknown timeout
+      if ($self->{handle} = DBI->connect(
+          $self->{dsn},
+          $self->{username},
+          $self->{password},
+          { RaiseError => 1, AutoCommit => 0, PrintError => 1 })) {
+        $retval = $self;
+      } else {
+        # doesnt seem to work $self->{errstr} = DBI::errstr();
+        $self->{errstr} = "connect failed";
+        return undef;
+      }
+    };
+    if ($@) {
+      $self->{errstr} = $@;
+      $retval = undef;
+    }
+  }
+  $self->{tac} = Time::HiRes::time();
+  return $retval;
+}
+
+sub fetchrow_array {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my @row = ();
+  eval {
+    $self->trace(sprintf "SQL:\n%s\nARGS:\n%s\n",
+        $sql, Data::Dumper::Dumper(\@arguments));
+    $sth = $self->{handle}->prepare($sql);
+    if (scalar(@arguments)) {
+      $sth->execute(@arguments) || die DBI::errstr();
+    } else {
+      $sth->execute() || die DBI::errstr();
+    }
+    if (lc $sql =~ /^(exec |sp_)/) {
+      # flatten the result sets
+      do {
+        while (my $aref = $sth->fetchrow_arrayref()) {
+          push(@row, @{$aref});
+        }
+      } while ($sth->{syb_more_results});
+    } else {
+      @row = $sth->fetchrow_array();
+    }
+    $self->trace(sprintf "RESULT:\n%s\n",
+        Data::Dumper::Dumper(\@row));
+  }; 
+  if ($@) {
+    $self->debug(sprintf "bumm %s", $@);
+  }
+  if (-f "/tmp/check_mssql_health_simulation/".$self->{mode}) {
+    my $simulation = do { local (@ARGV, $/) = 
+        "/tmp/check_mssql_health_simulation/".$self->{mode}; <> };
+    @row = split(/\s+/, (split(/\n/, $simulation))[0]);
+  }
+  return $row[0] unless wantarray;
+  return @row;
+}
+
+sub fetchall_array {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my $rows = undef;
+  eval {
+    $self->trace(sprintf "SQL:\n%s\nARGS:\n%s\n",
+        $sql, Data::Dumper::Dumper(\@arguments));
+    $sth = $self->{handle}->prepare($sql);
+    if (scalar(@arguments)) {
+      $sth->execute(@arguments);
+    } else {
+      $sth->execute();
+    }
+    $rows = $sth->fetchall_arrayref();
+    $self->trace(sprintf "RESULT:\n%s\n",
+        Data::Dumper::Dumper($rows));
+  }; 
+  if ($@) {
+    printf STDERR "bumm %s\n", $@;
+  }
+  if (-f "/tmp/check_mssql_health_simulation/".$self->{mode}) {
+    my $simulation = do { local (@ARGV, $/) = 
+        "/tmp/check_mssql_health_simulation/".$self->{mode}; <> };
+    @{$rows} = map { [ split(/\s+/, $_) ] } split(/\n/, $simulation);
+  }
+  return @{$rows};
+}
+
+sub exec_sp_1hash {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my $rows = undef;
+  eval {
+    $self->trace(sprintf "SQL:\n%s\nARGS:\n%s\n",
+        $sql, Data::Dumper::Dumper(\@arguments));
+    $sth = $self->{handle}->prepare($sql);
+    if (scalar(@arguments)) {
+      $sth->execute(@arguments);
+    } else {
+      $sth->execute();
+    }
+    do {
+      while (my $href = $sth->fetchrow_hashref()) {
+        foreach (keys %{$href}) {
+          push(@{$rows}, [ $_, $href->{$_} ]);
+        }
+      }
+    } while ($sth->{syb_more_results});
+    $self->trace(sprintf "RESULT:\n%s\n",
+        Data::Dumper::Dumper($rows));
+  };
+  if ($@) {
+    printf STDERR "bumm %s\n", $@;
+  }
+  return @{$rows};
+}
+
+
+sub execute {
+  my $self = shift;
+  my $sql = shift;
+  eval {
+    my $sth = $self->{handle}->prepare($sql);
+    $sth->execute();
+  };
+  if ($@) {
+    printf STDERR "bumm %s\n", $@;
+  }
+}
+
+sub DESTROY {
+  my $self = shift;
+  $self->trace(sprintf "disconnecting DBD %s",
+      $self->{handle} ? "with handle" : "without handle");
+  $self->{handle}->disconnect() if $self->{handle};
+}
+
+package DBD::MSSQL::Server::Connection::Tsql;
+
+use strict;
+use File::Temp qw/tempfile/;
+
+our @ISA = qw(DBD::MSSQL::Server::Connection);
+
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  my $retval = undef;
+  $self->{loginstring} = "traditional";
+  ($self->{sql_commandfile_handle}, $self->{sql_commandfile}) =
+      tempfile($self->{mode}."XXXXX", SUFFIX => ".sql", 
+      DIR => $self->system_tmpdir() );
+  close $self->{sql_commandfile_handle};
+  ($self->{sql_resultfile_handle}, $self->{sql_resultfile}) =
+      tempfile($self->{mode}."XXXXX", SUFFIX => ".out", 
+      DIR => $self->system_tmpdir() );
+  close $self->{sql_resultfile_handle};
+  if ($self->{mode} =~ /^server::tnsping/) {
+    if (! $self->{connect}) {
+      $self->{errstr} = "Please specify a database";
+    } else {
+      $self->{sid} = $self->{connect};
+      $self->{user} ||= time;  # prefer an existing user
+      $self->{password} = time;
+    }
+  } else {
+    if ($self->{connect} && ! $self->{user} && ! $self->{password} &&
+        $self->{connect} =~ /(\w+)\/(\w+)@(\w+)/) {
+      # --connect nagios/oradbmon@bba
+      $self->{connect} = $3;
+      $self->{user} = $1;
+      $self->{password} = $2;
+      $self->{sid} = $self->{connect};
+      if ($self->{user} eq "sys") {
+        delete $ENV{TWO_TASK};
+        $self->{loginstring} = "sys";
+      } else {
+        $self->{loginstring} = "traditional";
+      }
+    } elsif ($self->{connect} && ! $self->{user} && ! $self->{password} &&
+        $self->{connect} =~ /sysdba@(\w+)/) {
+      # --connect sysdba@bba
+      $self->{connect} = $1;
+      $self->{user} = "/";
+      $self->{sid} = $self->{connect};
+      $self->{loginstring} = "sysdba";
+    } elsif ($self->{connect} && ! $self->{user} && ! $self->{password} &&
+        $self->{connect} =~ /(\w+)/) {
+      # --connect bba
+      $self->{connect} = $1;
+      # maybe this is a os authenticated user
+      delete $ENV{TWO_TASK};
+      $self->{sid} = $self->{connect};
+      if ($^O ne "hpux") {       #hpux && 1.21 only accepts "DBI:MSSQL:SID"
+        $self->{connect} = "";   #linux 1.20 only accepts "DBI:MSSQL:" + MSSQL_SID
+      }
+      $self->{user} = '/';
+      $self->{password} = "";
+      $self->{loginstring} = "extauth";
+    } elsif ($self->{user} &&
+        $self->{user} =~ /^\/@(\w+)/) {
+      # --user /@ubba1
+      $self->{user} = $1;
+      $self->{sid} = $self->{connect};
+      $self->{loginstring} = "passwordstore";
+    } elsif ($self->{connect} && $self->{user} && ! $self->{password} &&
+        $self->{user} eq "sysdba") {
+      # --connect bba --user sysdba
+      $self->{connect} = $1;
+      $self->{user} = "/";
+      $self->{sid} = $self->{connect};
+      $self->{loginstring} = "sysdba";
+    } elsif ($self->{connect} && $self->{user} && $self->{password}) {
+      # --connect bba --user nagios --password oradbmon
+      $self->{sid} = $self->{connect};
+      $self->{loginstring} = "traditional";
+    } else {
+      $self->{errstr} = "Please specify database, username and password";
+      return undef;
+    }
+  }
+  if (! exists $self->{errstr}) {
+    eval {
+      $ENV{MSSQL_SID} = $self->{sid};
+      $ENV{PATH} = $ENV{MSSQL_HOME}."/bin".
+          (defined $ENV{PATH} ? 
+          ":".$ENV{PATH} : "");
+      $ENV{LD_LIBRARY_PATH} = $ENV{MSSQL_HOME}."/lib".
+          (defined $ENV{LD_LIBRARY_PATH} ? 
+          ":".$ENV{LD_LIBRARY_PATH} : "");
+      # am 30.9.2008 hat perl das /bin/sqlplus in $ENV{MSSQL_HOME}.'/bin/sqlplus' 
+      # eiskalt evaluiert und 
+      # /u00/app/mssql/product/11.1.0/db_1/u00/app/mssql/product/11.1.0/db_1/bin/sqlplus 
+      # draus gemacht. Leider nicht in Mini-Scripts reproduzierbar, sondern nur hier.
+      # Das ist der Grund fuer die vielen ' und .
+      my $sqlplus = $ENV{MSSQL_HOME}.'/'.'bin'.'/'.'sqlplus';
+      if ((-x $ENV{MSSQL_HOME}.'/'.'sqlplus') && ( -f $ENV{MSSQL_HOME}.'/'.'sqlplus')) {
+          $sqlplus = $ENV{MSSQL_HOME}.'/'.'sqlplus';
+      }
+      my $tnsping = $ENV{MSSQL_HOME}.'/'.'bin'.'/'.'tnsping';
+      if (! -x $sqlplus) {
+        die "nosqlplus\n";
+      }
+      if ($self->{mode} =~ /^server::tnsping/) {
+        if ($self->{loginstring} eq "traditional") {
+          $self->{sqlplus} = sprintf "%s -S %s/%s@%s < /dev/null",
+              $sqlplus,
+              $self->{user}, $self->{password}, $self->{sid};
+        } elsif ($self->{loginstring} eq "extauth") {
+          $self->{sqlplus} = sprintf "%s -S / < /dev/null",
+              $sqlplus;
+        } elsif ($self->{loginstring} eq "passwordstore") {
+          $self->{sqlplus} = sprintf "%s -S /@%s < /dev/null",
+              $sqlplus,
+              $self->{user};
+        } elsif ($self->{loginstring} eq "sysdba") {
+          $self->{sqlplus} = sprintf "%s -S / as sysdba < /dev/null",
+              $sqlplus;
+        } elsif ($self->{loginstring} eq "sys") {
+          $self->{sqlplus} = sprintf "%s -S %s/%s@%s as sysdba < /dev/null",
+              $sqlplus,
+              $self->{user}, $self->{password}, $self->{sid};
+        }
+      } else {
+        if ($self->{loginstring} eq "traditional") {
+          $self->{sqlplus} = sprintf "%s -S %s/%s@%s < %s > %s",
+              $sqlplus,
+              $self->{user}, $self->{password}, $self->{sid},
+              $self->{sql_commandfile}, $self->{sql_resultfile};
+        } elsif ($self->{loginstring} eq "extauth") {
+          $self->{sqlplus} = sprintf "%s -S / < %s > %s",
+              $sqlplus,
+              $self->{sql_commandfile}, $self->{sql_resultfile};
+        } elsif ($self->{loginstring} eq "passwordstore") {
+          $self->{sqlplus} = sprintf "%s -S /@%s < %s > %s",
+              $sqlplus,
+              $self->{user},
+              $self->{sql_commandfile}, $self->{sql_resultfile};
+        } elsif ($self->{loginstring} eq "sysdba") {
+          $self->{sqlplus} = sprintf "%s -S / as sysdba < %s > %s",
+              $sqlplus,
+              $self->{sql_commandfile}, $self->{sql_resultfile};
+        } elsif ($self->{loginstring} eq "sys") {
+          $self->{sqlplus} = sprintf "%s -S %s/%s@%s as sysdba < %s > %s",
+              $sqlplus,
+              $self->{user}, $self->{password}, $self->{sid},
+              $self->{sql_commandfile}, $self->{sql_resultfile};
+        }
+      }
+  
+      use POSIX ':signal_h';
+      local $SIG{'ALRM'} = sub {
+        die "alarm\n";
+      };
+      my $mask = POSIX::SigSet->new( SIGALRM );
+      my $action = POSIX::SigAction->new(
+          sub { die "alarm\n" ; }, $mask);
+      my $oldaction = POSIX::SigAction->new();
+      sigaction(SIGALRM ,$action ,$oldaction );
+      alarm($self->{timeout} - 1); # 1 second before the global unknown timeout
+  
+      if ($self->{mode} =~ /^server::tnsping/) {
+        if (-x $tnsping) {
+          my $exit_output = `$tnsping $self->{sid}`;
+          if ($?) {
+          #  printf STDERR "tnsping exit bumm \n";
+          # immer 1 bei misserfolg
+          }
+          if ($exit_output =~ /^OK \(\d+/m) {
+            die "ORA-01017"; # fake a successful connect with wrong password
+          } elsif ($exit_output =~ /^(TNS\-\d+)/m) {
+            die $1;
+          } else {
+            die "TNS-03505";
+          }
+        } else {
+          my $exit_output = `$self->{sqlplus}`;
+          if ($?) {
+            printf STDERR "ping exit bumm \n";
+          }
+          $exit_output =~ s/\n//g;
+          $exit_output =~ s/at $0//g;
+          chomp $exit_output;
+          die $exit_output;
+        }
+      } else {
+        my $answer = $self->fetchrow_array(
+            q{ SELECT 42 FROM dual});
+        die unless defined $answer and $answer == 42;
+      }
+      $retval = $self;
+    };
+    if ($@) {
+      $self->{errstr} = $@;
+      $self->{errstr} =~ s/at $0 .*//g;
+      chomp $self->{errstr};
+      $retval = undef;
+    }
+  }
+  $self->{tac} = Time::HiRes::time();
+  return $retval;
+}
+
+
+sub fetchrow_array {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my @row = ();
+  foreach (@arguments) {
+    # replace the ? by the parameters
+    if (/^\d+$/) {
+      $sql =~ s/\?/$_/;
+    } else {
+      $sql =~ s/\?/'$_'/;
+    }
+  }
+  $self->create_commandfile($sql);
+  my $exit_output = `$self->{sqlplus}`;
+  if ($?) {
+    printf STDERR "fetchrow_array exit bumm \n";
+    my $output = do { local (@ARGV, $/) = $self->{sql_resultfile}; <> };
+    my @oerrs = map {
+      /(ORA\-\d+:.*)/ ? $1 : ();
+    } split(/\n/, $output);
+    $self->{errstr} = join(" ", @oerrs);
+  } else {
+    my $output = do { local (@ARGV, $/) = $self->{sql_resultfile}; <> };
+    @row = map { convert($_) } 
+        map { s/^\s+([\.\d]+)$/$1/g; $_ }         # strip leading space from numbers
+        map { s/\s+$//g; $_ }                     # strip trailing space
+        split(/\|/, (split(/\n/, $output))[0]);
+  }
+  if ($@) {
+    $self->debug(sprintf "bumm %s", $@);
+  }
+  unlink $self->{sql_commandfile};
+  unlink $self->{sql_resultfile};
+  return $row[0] unless wantarray;
+  return @row;
+}
+
+sub fetchall_array {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my $rows = undef;
+  foreach (@arguments) {
+    # replace the ? by the parameters
+    if (/^\d+$/) {
+      $sql =~ s/\?/$_/;
+    } else {
+      $sql =~ s/\?/'$_'/;
+    }
+  }
+
+  $self->create_commandfile($sql);
+  my $exit_output = `$self->{sqlplus}`;
+  if ($?) {
+    printf STDERR "fetchrow_array exit bumm %s\n", $exit_output;
+    my $output = do { local (@ARGV, $/) = $self->{sql_resultfile}; <> };
+    my @oerrs = map {
+      /(ORA\-\d+:.*)/ ? $1 : ();
+    } split(/\n/, $output);
+    $self->{errstr} = join(" ", @oerrs);
+  } else {
+    my $output = do { local (@ARGV, $/) = $self->{sql_resultfile}; <> };
+    my @rows = map { [ 
+        map { convert($_) } 
+        map { s/^\s+([\.\d]+)$/$1/g; $_ }
+        map { s/\s+$//g; $_ }
+        split /\|/
+    ] } grep { ! /^\d+ rows selected/ } 
+        grep { ! /^Elapsed: / }
+        grep { ! /^\s*$/ } split(/\n/, $output);
+    $rows = \@rows;
+  }
+  if ($@) {
+    $self->debug(sprintf "bumm %s", $@);
+  }
+  unlink $self->{sql_commandfile};
+  unlink $self->{sql_resultfile};
+  return @{$rows};
+}
+
+sub func {
+  my $self = shift;
+  my $function = shift;
+  $self->{handle}->func(@_);
+}
+
+sub convert {
+  my $n = shift;
+  # mostly used to convert numbers in scientific notation
+  if ($n =~ /^\s*\d+\s*$/) {
+    return $n;
+  } elsif ($n =~ /^\s*([-+]?)(\d*[\.,]*\d*)[eE]{1}([-+]?)(\d+)\s*$/) {
+    my ($vor, $num, $sign, $exp) = ($1, $2, $3, $4);
+    $n =~ s/E/e/g;
+    $n =~ s/,/\./g;
+    $num =~ s/,/\./g;
+    my $sig = $sign eq '-' ? "." . ($exp - 1 + length $num) : '';
+    my $dec = sprintf "%${sig}f", $n;
+    $dec =~ s/\.[0]+$//g;
+    return $dec;
+  } elsif ($n =~ /^\s*([-+]?)(\d+)[\.,]*(\d*)\s*$/) {
+    return $1.$2.".".$3;
+  } elsif ($n =~ /^\s*(.*?)\s*$/) {
+    return $1;
+  } else {
+    return $n;
+  }
+}
+
+
+sub execute {
+  my $self = shift;
+  my $sql = shift;
+  eval {
+    my $sth = $self->{handle}->prepare($sql);
+    $sth->execute();
+  };
+  if ($@) {
+    printf STDERR "bumm %s\n", $@;
+  }
+}
+
+sub DESTROY {
+  my $self = shift;
+  $self->trace("try to clean up command and result files");
+  unlink $self->{sql_commandfile} if -f $self->{sql_commandfile};
+  unlink $self->{sql_resultfile} if -f $self->{sql_resultfile};
+}
+
+sub create_commandfile {
+  my $self = shift;
+  my $sql = shift;
+  open CMDCMD, "> $self->{sql_commandfile}"; 
+  printf CMDCMD "SET HEADING OFF\n";
+  printf CMDCMD "SET PAGESIZE 0\n";
+  printf CMDCMD "SET LINESIZE 32767\n";
+  printf CMDCMD "SET COLSEP '|'\n";
+  printf CMDCMD "SET TAB OFF\n";
+  printf CMDCMD "SET TRIMSPOOL ON\n";
+  printf CMDCMD "SET NUMFORMAT 9.999999EEEE\n";
+  printf CMDCMD "SPOOL %s\n", $self->{sql_resultfile};
+#  printf CMDCMD "ALTER SESSION SET NLS_NUMERIC_CHARACTERS='.,';\n/\n";
+  printf CMDCMD "%s\n/\n", $sql;
+  printf CMDCMD "EXIT\n";
+  close CMDCMD;
+}
+
+package DBD::MSSQL::Server::Connection::Sqlrelay;
+
+use strict;
+use Net::Ping;
+
+our @ISA = qw(DBD::MSSQL::Server::Connection);
+
+
+sub init {
+  my $self = shift;
+  my %params = @_;
+  my $retval = undef;
+  if ($self->{mode} =~ /^server::tnsping/) {
+  } else {
+    if (! $self->{hostname} || ! $self->{username} || ! $self->{password} || ! $self->{port}) {
+      $self->{errstr} = "Please specify database, username and password";
+      return undef;
+    }
+  }
+  if (! exists $self->{errstr}) {
+    eval {
+      require DBI;
+      use POSIX ':signal_h';
+      local $SIG{'ALRM'} = sub {
+        die "alarm\n";
+      };
+      my $mask = POSIX::SigSet->new( SIGALRM );
+      my $action = POSIX::SigAction->new(
+      sub { die "alarm\n" ; }, $mask);
+      my $oldaction = POSIX::SigAction->new();
+      sigaction(SIGALRM ,$action ,$oldaction );
+      alarm($self->{timeout} - 1); # 1 second before the global unknown timeout
+      if ($self->{handle} = DBI->connect(
+          #sprintf("DBI:SQLRelay:host=%s;port=%d;socket=%s", 
+          sprintf("DBI:SQLRelay:host=%s;port=%d;",
+              $self->{hostname}, $self->{port}),
+        $self->{username},
+        $self->{password},
+        { RaiseError => 1, AutoCommit => 0, PrintError => 1 })) {
+      } else {
+        $self->{errstr} = DBI::errstr();
+      }
+    };
+    if ($@) {
+      $self->{errstr} = $@;
+      $self->{errstr} =~ s/at [\w\/\.]+ line \d+.*//g;
+      $retval = undef;
+    }
+  }
+  $self->{tac} = Time::HiRes::time();
+  return $retval;
+}
+
+sub fetchrow_array {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my @row = ();
+  my $new_dbh = $self->{handle}->clone();
+  $self->trace(sprintf "fetchrow_array: %s", $sql);
+  #
+  # does not work with bind variables
+  #
+  while ($sql =~ /\?/) {
+    my $param = shift @arguments;
+    if ($param !~ /^\d+$/) {
+      $param = $self->{handle}->quote($param);
+    }
+    $sql =~ s/\?/$param/;
+  }
+  $sql =~ s/^\s*//g;
+  $sql =~ s/\s*$//g;
+  eval {
+    $sth = $self->{handle}->prepare($sql);
+    if (scalar(@arguments)) {
+      $sth->execute(@arguments);
+    } else {
+      $sth->execute();
+    }
+    @row = $sth->fetchrow_array();
+    $sth->finish();
+  };
+  if ($@) {
+    $self->debug(sprintf "bumm %s", $@);
+  }
+  # without this trick, there are error messages like
+  # "No server-side cursors were available to process the query"
+  # and the results are messed up.
+  $self->{handle}->disconnect();
+  $self->{handle} = $new_dbh;
+  if (-f "/tmp/check_mssql_health_simulation/".$self->{mode}) {
+    my $simulation = do { local (@ARGV, $/) =
+        "/tmp/check_mssql_health_simulation/".$self->{mode}; <> };
+    @row = split(/\s+/, (split(/\n/, $simulation))[0]);
+  }
+  return $row[0] unless wantarray;
+  return @row;
+}
+
+sub fetchall_array {
+  my $self = shift;
+  my $sql = shift;
+  my @arguments = @_;
+  my $sth = undef;
+  my $rows = undef;
+  my $new_dbh = $self->{handle}->clone();
+  $self->trace(sprintf "fetchall_array: %s", $sql);
+  while ($sql =~ /\?/) {
+    my $param = shift @arguments;
+    if ($param !~ /^\d+$/) {
+      $param = $self->{handle}->quote($param);
+    }
+    $sql =~ s/\?/$param/;
+  }
+  eval {
+    $sth = $self->{handle}->prepare($sql);
+    if (scalar(@arguments)) {
+      $sth->execute(@arguments);
+    } else {
+      $sth->execute();
+    }
+    $rows = $sth->fetchall_arrayref();
+    my $asrows = $sth->fetchall_arrayref();
+    $sth->finish();
+  };
+  if ($@) {
+    printf STDERR "bumm %s\n", $@;
+  }
+  $self->{handle}->disconnect();
+  $self->{handle} = $new_dbh;
+  if (-f "/tmp/check_mssql_health_simulation/".$self->{mode}) {
+    my $simulation = do { local (@ARGV, $/) =
+        "/tmp/check_mssql_health_simulation/".$self->{mode}; <> };
+    @{$rows} = map { [ split(/\s+/, $_) ] } split(/\n/, $simulation);
+  }
+  return @{$rows};
+}
+
+sub func {
+  my $self = shift;
+  $self->{handle}->func(@_);
+}
+
+
+sub execute {
+  my $self = shift;
+  my $sql = shift;
+  eval {
+    my $sth = $self->{handle}->prepare($sql);
+    $sth->execute();
+  };
+  if ($@) {
+    printf STDERR "bumm %s\n", $@;
+  }
+}
+
+sub DESTROY {
+  my $self = shift;
+  #$self->trace(sprintf "disconnecting DBD %s",
+  #    $self->{handle} ? "with handle" : "without handle");
+  #$self->{handle}->disconnect() if $self->{handle};
+}
+
+
+
+
+
+
+package main;
+
+use strict;
+use Getopt::Long qw(:config no_ignore_case);
+use File::Basename;
+use lib dirname($0);
+
+
+
+use vars qw ($PROGNAME $REVISION $CONTACT $TIMEOUT $STATEFILESDIR $needs_restart %commandline);
+
+$PROGNAME = "check_mssql_health";
+$REVISION = '$Revision: 1.5.3 $';
+$CONTACT = 'gerhard.lausser@consol.de';
+$TIMEOUT = 60;
+$STATEFILESDIR = '/var/tmp/check_mssql_health';
+$needs_restart = 0;
+
+my @modes = (
+  ['server::connectiontime',
+      'connection-time', undef,
+      'Time to connect to the server' ],
+  ['server::cpubusy',
+      'cpu-busy', undef,
+      'Cpu busy in percent' ],
+  ['server::iobusy',
+      'io-busy', undef,
+      'IO busy in percent' ],
+  ['server::fullscans',
+      'full-scans', undef,
+      'Full table scans per second' ],
+  ['server::connectedusers',
+      'connected-users', undef,
+      'Number of currently connected users' ],
+  ['server::database::transactions',
+      'transactions', undef,
+      'Transactions per second (per database)' ],
+  ['server::batchrequests',
+      'batch-requests', undef,
+      'Batch requests per second' ],
+  ['server::latch::waits',
+      'latches-waits', undef,
+      'Number of latch requests that could not be granted immediately' ],
+  ['server::latch::waittime',
+      'latches-wait-time', undef,
+      'Average time for a latch to wait before the request is met' ],
+  ['server::memorypool::lock::waits',
+      'locks-waits', undef,
+      'The number of locks per second that had to wait' ],
+  ['server::memorypool::lock::timeouts',
+      'locks-timeouts', undef,
+      'The number of locks per second that timed out' ],
+  ['server::memorypool::lock::deadlocks',
+      'locks-deadlocks', undef,
+      'The number of deadlocks per second' ],
+  ['server::sql::recompilations',
+      'sql-recompilations', undef,
+      'Re-Compilations per second' ],
+  ['server::sql::initcompilations',
+      'sql-initcompilations', undef,
+      'Initial compilations per second' ],
+  ['server::totalmemory',
+      'total-server-memory', undef,
+      'The amount of memory that SQL Server has allocated to it' ],
+  ['server::memorypool::buffercache::hitratio',
+      'mem-pool-data-buffer-hit-ratio', ['buffer-cache-hit-ratio'],
+      'Data Buffer Cache Hit Ratio' ],
+  ['server::memorypool::buffercache::hitratio',
+      'mem-pool-data-buffer-hit-ratio', ['buffer-cache-hit-ratio'],
+      'Data Buffer Cache Hit Ratio' ],
+
+
+  ['server::memorypool::buffercache::lazywrites',
+      'lazy-writes', undef,
+      'Lazy writes per second' ],
+  ['server::memorypool::buffercache::pagelifeexpectancy',
+      'page-life-expectancy', undef,
+      'Seconds a page is kept in memory before being flushed' ],
+  ['server::memorypool::buffercache::freeliststalls',
+      'free-list-stalls', undef,
+      'Requests per second that had to wait for a free page' ],
+  ['server::memorypool::buffercache::checkpointpages',
+      'checkpoint-pages', undef,
+      'Dirty pages flushed to disk per second. (usually by a checkpoint)' ],
+
+
+  ['server::database::databasefree',
+      'database-free', undef,
+      'Free space in database' ],
+  ['server::database::backupage',
+      'backup-age', undef,
+      'Elapsed time (in hours) since a database was last backupped' ],
+  ['server::sql',
+      'sql', undef,
+      'any sql command returning a single number' ],
+  ['server::database::listdatabases',
+      'list-databases', undef,
+      'convenience function which lists all databases' ],
+  ['server::database::datafile::listdatafiles',
+      'list-datafiles', undef,
+      'convenience function which lists all datafiles' ],
+  ['server::memorypool::lock::listlocks',
+      'list-locks', undef,
+      'convenience function which lists all locks' ],
+);
+
+sub print_usage () {
+  print <<EOUS;
+  Usage:
+    $PROGNAME [-v] [-t <timeout>] --hostname=<db server hostname>
+        --username=<username> --password=<password> [--port <port>]
+        --mode=<mode>
+    $PROGNAME [-h | --help]
+    $PROGNAME [-V | --version]
+
+  Options:
+    --hostname
+       the database server
+    --username
+       the mssql user
+    --password
+       the mssql user's password
+    --warning
+       the warning range
+    --critical
+       the critical range
+    --mode
+       the mode of the plugin. select one of the following keywords:
+EOUS
+  my $longest = length ((reverse sort {length $a <=> length $b} map { $_->[1] } @modes)[0]);
+  my $format = "       %-".
+  (length ((reverse sort {length $a <=> length $b} map { $_->[1] } @modes)[0])).
+  "s\t(%s)\n";
+  foreach (@modes) {
+    printf $format, $_->[1], $_->[3];
+  }
+  printf "\n";
+  print <<EOUS;
+    --name
+       the name of the database etc depending on the mode.
+    --name2
+       if name is a sql statement, this statement would appear in
+       the output and the performance data. This can be ugly, so 
+       name2 can be used to appear instead.
+    --regexp
+       if this parameter is used, name will be interpreted as a 
+       regular expression.
+    --units
+       one of %, KB, MB, GB. This is used for a better output of mode=sql
+       and for specifying thresholds for mode=tablespace-free
+
+  Database-related modes check all databases in one run by default.
+  If only a single database should be checked, use the --name parameter.
+  The same applies to datafile-related modes.
+  
+  In mode sql you can url-encode the statement so you will not have to mess
+  around with special characters in your Nagios service definitions.
+  Instead of 
+  --name="select count(*) from master..sysprocesses"
+  you can say 
+  --name=select%20count%28%2A%29%20from%20master%2E%2Esysprocesses
+  For your convenience you can call check_mssql_health with the --encode
+  option and it will encode the standard input.
+
+  You can find the full documentation for this plugin at
+  http://www.consol.de/opensource/nagios/check-mssql-health or
+  http://www.consol.com/opensource/nagios/check-mssql-health
+
+
+EOUS
+#
+# --basis
+#  one of rate, delta, value
+  
+}
+
+sub print_help () {
+  print "Copyright (c) 2009 Gerhard Lausser\n\n";
+  print "\n";
+  print "  Check various parameters of MSSQL databases \n";
+  print "\n";
+  print_usage();
+  support();
+}
+
+
+sub print_revision ($$) {
+  my $commandName = shift;
+  my $pluginRevision = shift;
+  $pluginRevision =~ s/^\$Revision: //;
+  $pluginRevision =~ s/ \$\s*$//;
+  print "$commandName ($pluginRevision)\n";
+  print "This nagios plugin comes with ABSOLUTELY NO WARRANTY. You may redistribute\ncopies of this plugin under the terms of the GNU General Public License.\n";
+}
+
+sub support () {
+  my $support='Send email to gerhard.lausser@consol.de if you have questions\nregarding use of this software. \nPlease include version information with all correspondence (when possible,\nuse output from the --version option of the plugin itself).\n';
+  $support =~ s/@/\@/g;
+  $support =~ s/\\n/\n/g;
+  print $support;
+}
+
+sub contact_author ($$) {
+  my $item = shift;
+  my $strangepattern = shift;
+  if ($commandline{verbose}) {
+    printf STDERR
+        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n".
+        "You found a line which is not recognized by %s\n".
+        "This means, certain components of your system cannot be checked.\n".
+        "Please contact the author %s and\nsend him the following output:\n\n".
+        "%s /%s/\n\nThank you!\n".
+        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
+            $PROGNAME, $CONTACT, $item, $strangepattern;
+  }
+}
+
+%commandline = ();
+my @params = (
+    "timeout|t=i",
+    "version|V",
+    "help|h",
+    "verbose|v",
+    "debug|d",
+    "hostname=s",
+    "username=s",
+    "password=s",
+    "port=i",
+    "server=s",
+    "mode|m=s",
+    "tablespace=s",
+    "database=s",
+    "datafile=s",
+    "waitevent=s",
+    "namefromfile=s",
+    "queryfile=s",
+    "name=s",
+    "name2=s",
+    "regexp",
+    "perfdata",
+    "warning=s",
+    "critical=s",
+    "absolute|a",
+    "basis",
+    "lookback|l=i",
+    "environment|e=s%",
+    "method=s",
+    "runas|r=s",
+    "scream",
+    "shell",
+    "eyecandy",
+    "encode",
+    "units=s",
+    "3");
+
+if (! GetOptions(\%commandline, @params)) {
+  print_help();
+  exit $ERRORS{UNKNOWN};
+}
+
+if (exists $commandline{version}) {
+  print_revision($PROGNAME, $REVISION);
+  exit $ERRORS{OK};
+}
+
+if (exists $commandline{help}) {
+  print_help();
+  exit $ERRORS{OK};
+} elsif (! exists $commandline{mode}) {
+  printf "Please select a mode\n";
+  print_help();
+  exit $ERRORS{OK};
+}
+
+if ($commandline{mode} eq "encode") {
+  my $input = <>;
+  chomp $input;
+  $input =~ s/([^A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
+  printf "%s\n", $input;
+  exit $ERRORS{OK};
+}
+
+if (!exists $commandline{queryfile} || !$commandline{queryfile}) {
+	$commandline{queryfile} = "/etc/nagios/check_mssql_health-queries";
+}
+
+
+if (exists $commandline{3}) {
+  $ENV{NRPE_MULTILINESUPPORT} = 1;
+}
+
+if (exists $commandline{timeout}) {
+  $TIMEOUT = $commandline{timeout};
+}
+
+if (exists $commandline{verbose}) {
+  $DBD::MSSQL::Server::verbose = exists $commandline{verbose};
+}
+
+if (exists $commandline{scream}) {
+#  $DBD::MSSQL::Server::hysterical = exists $commandline{scream};
+}
+
+$DBD::MSSQL::Server::my_modules_dyn_dir = '/usr/local/nagios/libexec';
+
+if (exists $commandline{environment}) {
+  # if the desired environment variable values are different from
+  # the environment of this running script, then a restart is necessary.
+  # because setting $ENV does _not_ change the environment of the running script.
+  foreach (keys %{$commandline{environment}}) {
+    if ((! $ENV{$_}) || ($ENV{$_} ne $commandline{environment}->{$_})) {
+      $needs_restart = 1;
+      $ENV{$_} = $commandline{environment}->{$_};
+      printf STDERR "new %s=%s forces restart\n", $_, $ENV{$_} 
+          if $DBD::MSSQL::Server::verbose;
+    }
+  }
+  # e.g. called with --runas dbnagio. shlib_path environment variable is stripped
+  # during the sudo.
+  # so the perl interpreter starts without a shlib_path. but --runas cares for
+  # a --environment shlib_path=...
+  # so setting the environment variable in the code above and restarting the 
+  # perl interpreter will help it find shared libs
+}
+
+if (exists $commandline{runas}) {
+  # remove the runas parameter
+  # exec sudo $0 ... the remaining parameters
+  $needs_restart = 1;
+  # if the calling script has a path for shared libs and there is no --environment
+  # parameter then the called script surely needs the variable too.
+  foreach my $important_env qw(LD_LIBRARY_PATH SHLIB_PATH 
+      MSSQL_HOME TNS_ADMIN ORA_NLS ORA_NLS33 ORA_NLS10) {
+    if ($ENV{$important_env} && ! scalar(grep { /^$important_env=/ } 
+        keys %{$commandline{environment}})) {
+      $commandline{environment}->{$important_env} = $ENV{$important_env};
+      printf STDERR "add important --environment %s=%s\n", 
+          $important_env, $ENV{$important_env} if $DBD::MSSQL::Server::verbose;
+    }
+  }
+}
+
+if (exists $commandline{namefromfile}) {
+	if (!open QF, "<$commandline{queryfile}") {
+		print "Unable to open queryfile $commandline{queryfile} param --queryfile\n";
+		print_help();
+		exit $ERRORS{OK};
+	}
+	
+	my $sql = '';
+	while (my $l = <QF>) {
+		# Double chomp if needed
+		chomp($l) for (0..1);
+		
+		$l =~ s/#.*$//g;
+		
+		my ($k, $sql_line) = split(/\s*=\s*/, $l, 2);
+		#printf("l: %s\nk: %s sql: %s\n", $l, $k, $sql_line);
+		
+		if ($k eq $commandline{namefromfile}) {
+			$sql = $sql_line;
+			last;
+		}
+	}
+	close QF;
+
+	if (!$sql) {
+		print "Unable to find namefromfile key $commandline{namefromfile} in file $commandline{queryfile}\n";
+		exit $ERRORS{OK};
+	}
+	$commandline{name}=$sql;
+}
+
+if ($needs_restart) {
+  my @newargv = ();
+  my $runas = undef;
+  if (exists $commandline{runas}) {
+    $runas = $commandline{runas};
+    delete $commandline{runas};
+  }
+  foreach my $option (keys %commandline) {
+    if (grep { /^$option/ && /=/ } @params) {
+      if (ref ($commandline{$option}) eq "HASH") {
+        foreach (keys %{$commandline{$option}}) {
+          push(@newargv, sprintf "--%s", $option);
+          push(@newargv, sprintf "%s=%s", $_, $commandline{$option}->{$_});
+        }
+      } else {
+        push(@newargv, sprintf "--%s", $option);
+        push(@newargv, sprintf "%s", $commandline{$option});
+      }
+    } else {
+      push(@newargv, sprintf "--%s", $option);
+    }
+  }
+  if ($runas && ($> == 0)) {
+    # this was not my idea. some people connect as root to their nagios clients.
+    exec "su", "-c", sprintf("%s %s", $0, join(" ", @newargv)), "-", $runas;
+  } elsif ($runas) {
+    exec "sudo", "-S", "-u", $runas, $0, @newargv;
+  } else {
+    exec $0, @newargv;  
+    # this makes sure that even a SHLIB or LD_LIBRARY_PATH are set correctly
+    # when the perl interpreter starts. Setting them during runtime does not
+    # help loading e.g. libclntsh.so
+  }
+  exit;
+}
+
+if (exists $commandline{shell}) {
+  # forget what you see here.
+  system("/bin/sh");
+}
+
+if (exists $commandline{name}) {
+  # objects can be encoded like an url
+  # with s/([^A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
+  if (($commandline{mode} ne "sql") || 
+      (($commandline{mode} eq "sql") &&
+       ($commandline{name} =~ /select%20/i))) { # protect ... like '%cac%' ... from decoding
+    $commandline{name} =~ s/\%([A-Fa-f0-9]{2})/pack('C', hex($1))/seg;
+  }
+  if ($commandline{name} =~ /^0$/) {
+    # without this, $params{selectname} would be treated like undef
+    $commandline{name} = "00";
+  } 
+}
+
+$SIG{'ALRM'} = sub {
+  printf "UNKNOWN - %s timed out after %d seconds\n", $PROGNAME, $TIMEOUT;
+  exit $ERRORS{UNKNOWN};
+};
+alarm($TIMEOUT);
+
+my $nagios_level = $ERRORS{UNKNOWN};
+my $nagios_message = "";
+my $perfdata = "";
+my $racmode = 0;
+if ($commandline{mode} =~ /^rac-([^\-.]+)/) {
+  $racmode = 1;
+  $commandline{mode} =~ s/^rac\-//g;
+}
+if ($commandline{mode} =~ /^my-([^\-.]+)/) {
+  my $param = $commandline{mode};
+  $param =~ s/\-/::/g;
+  push(@modes, [$param, $commandline{mode}, undef, 'my extension']);
+} elsif ((! grep { $commandline{mode} eq $_ } map { $_->[1] } @modes) &&
+    (! grep { $commandline{mode} eq $_ } map { defined $_->[2] ? @{$_->[2]} : () } @modes)) {
+  printf "UNKNOWN - mode %s\n", $commandline{mode};
+  print_usage();
+  exit 3;
+}
+
+my %params = (
+    timeout => $TIMEOUT,
+    mode => (
+        map { $_->[0] } 
+        grep {
+           ($commandline{mode} eq $_->[1]) || 
+           ( defined $_->[2] && grep { $commandline{mode} eq $_ } @{$_->[2]}) 
+        } @modes
+    )[0],
+    racmode => $racmode,
+    method => $commandline{method} ||
+        $ENV{NAGIOS__SERVICEMSSQL_METH} ||
+        $ENV{NAGIOS__HOSTMSSQL_METH} || 'dbi',
+    hostname => $commandline{hostname}  || 
+        $ENV{NAGIOS__SERVICEMSSQL_HOST} ||
+        $ENV{NAGIOS__HOSTMSSQL_HOST},
+    username => $commandline{username} || 
+        $ENV{NAGIOS__SERVICEMSSQL_USER} ||
+        $ENV{NAGIOS__HOSTMSSQL_USER},
+    password => $commandline{password} || 
+        $ENV{NAGIOS__SERVICEMSSQL_PASS} ||
+        $ENV{NAGIOS__HOSTMSSQL_PASS},
+    port => $commandline{port} || 
+        $ENV{NAGIOS__SERVICEMSSQL_PORT} ||
+        $ENV{NAGIOS__HOSTMSSQL_PORT},
+    server => $commandline{server}  || 
+        $ENV{NAGIOS__SERVICEMSSQL_SERVER} ||
+        $ENV{NAGIOS__HOSTMSSQL_SERVER},
+    warningrange => $commandline{warning},
+    criticalrange => $commandline{critical},
+    absolute => $commandline{absolute},
+    lookback => $commandline{lookback},
+    tablespace => $commandline{tablespace},
+    database => $commandline{database},
+    datafile => $commandline{datafile},
+    basis => $commandline{basis},
+    selectname => $commandline{name} || $commandline{tablespace} || $commandline{datafile},
+    regexp => $commandline{regexp},
+    name => $commandline{name},
+    name2 => $commandline{name2} || $commandline{name},
+    units => $commandline{units},
+    eyecandy => $commandline{eyecandy},
+    statefilesdir => $STATEFILESDIR,
+);
+
+my $server = undef;
+
+$server = DBD::MSSQL::Server->new(%params);
+$server->nagios(%params);
+$server->calculate_result();
+$nagios_message = $server->{nagios_message};
+$nagios_level = $server->{nagios_level};
+$perfdata = $server->{perfdata};
+
+printf "%s - %s", $ERRORCODES{$nagios_level}, $nagios_message;
+printf " | %s", $perfdata if $perfdata;
+printf "\n";
+exit $nagios_level;

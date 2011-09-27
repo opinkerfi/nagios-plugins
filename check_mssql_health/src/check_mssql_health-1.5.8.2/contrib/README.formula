@@ -1,0 +1,73 @@
+==========================================================================================
+http://www.sqlservercentral.com/Forums/Topic261080-5-1.aspx#bm261128
+
+MachineName     InstanceName    DbName  FileGroupName   AllocatedMb     UsedMb  FreeMb  FreePercent     AutoGrowMb AutoGrowMaxSize
+WIN2K3R2EE      Default master  PRIMARY 4       2       1       49      0.4     2147483647
+WIN2K3R2EE      Default tempdb  PRIMARY 8       1       6       86      0.8     2147483647
+WIN2K3R2EE      Default model   PRIMARY 1       0       0       17      1       2147483647
+WIN2K3R2EE      Default msdb    PRIMARY 4       3       0       15      0.25    2147483647
+WIN2K3R2EE      Default ReportServer    PRIMARY 3       1       1       38      1       2147483647
+WIN2K3R2EE      Default ReportServerTempDB      PRIMARY 2       1       1       53      1       2147483647
+WIN2K3R2EE      Default AdventureWorksDW        PRIMARY 68      60      8       12      16      2147483647
+WIN2K3R2EE      Default AdventureWorks  PRIMARY 163     153     10      6       16      2147483647
+
+
+set nocount on
+create table #DBSpace
+(DbName                sysname
+,FileGroupName        sysname
+,AllocatedMb        integer
+,UsedMb        integer
+,FreeMb        integer
+,FreePercent        integer
+,AutoGrowMb        decimal(12,2)
+,AutoGrowMaxSize        integer
+)
+exec master.dbo.sp_MSForEachDb @command1 = 
+'dbcc updateusage([?]) with no_infomsgs  
+insert into #DBSpace
+select         ''?''
+,        sysFileGroups.groupname
+,         F.AllocatedPages         / 128                  as AllocatedMb
+,        U.UsedPages                 / 128                as UsedMb
+,        (F.AllocatedPages - U.UsedPages) / 128         as FreeMb
+,        (F.AllocatedPages - U.UsedPages) * 100 
+                / F.AllocatedPages                 as FreePercent
+,        CAST(F.GrowthPages / 128.0 as decimal(12,2) )        as AutoGrowMb
+,         F.MaxSize                                 as AutoGrowMaxSize
+FROM        (select GroupId
+        ,        sum( cast(  used as bigint) ) 
+        from         [?].dbo.sysindexes 
+        where        indid in (0,1,255)
+        group by GroupId
+        )        as        U ( GroupId , UsedPages) 
+join        (select GroupId 
+        , sum(cast( size as bigint) )
+        , Max(growth)
+        , MAX(case status & 0x100000
+                WHEN  0x100000 then Growth * Size / 100 -- Increase in Percentage
+                else        Growth                        -- Increase in Pages
+        end)
+        , MAX( case maxsize when -1 then 2147483647 else maxsize end)
+        from         [?].dbo.sysfiles  
+        where (status & 64 = 0)  
+        group by GroupId
+        )        as         F (GroupId , AllocatedPages, Growth, GrowthPages, maxsize)
+        on         F.GroupId = U.groupid
+join        sysFileGroups
+        on sysFileGroups.GroupId        = U.groupId
+'
+
+
+select        CAST( SERVERPROPERTY ('MachineName')                 as nvarchar(128) )        AS MachineName
+,        COALESCE ( CAST( SERVERPROPERTY ('InstanceName')                as nvarchar(128) ) , 'Default')        AS InstanceName
+,        DbName
+,        FileGroupName
+,        AllocatedMb
+,        UsedMb
+,        FreeMb
+,        FreePercent
+,        AutoGrowMb
+,        AutoGrowMaxSize        
+from         #DBSpace 
+

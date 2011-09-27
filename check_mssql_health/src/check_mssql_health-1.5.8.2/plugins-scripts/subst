@@ -1,0 +1,61 @@
+#!/usr/bin/awk
+
+function which(c,path) {
+	cmd = "test -x " c;
+
+	if (system(cmd)==0) {
+		return c;
+	} 
+
+	sub(/\/.*\//,"",c);
+  for (dir in path) {
+			cmd = "test -x " path[dir] "/" c;
+			if (system(cmd)==0) {
+					return path[dir] "/" c;
+			} 
+	}
+
+
+	return c;
+}
+
+# used to replace "use lib utils.pm" with "use lib @libexecdir"
+#
+function led() {
+	led1 = "${exec_prefix}/libexec";
+	led2 = "${prefix}";
+	led3 = "/usr/local/nagios";
+	if ( match(led1, /^\$\{exec_prefix\}/ ) != 0 ) {
+		return "\"" led3 "/libexec\" " ;
+	
+	}
+	return "\"" led1 "\"" ;
+}
+
+BEGIN {
+	split(ENVIRON["PATH"] ":/sbin:/usr/sbin",path,/:/);
+
+}
+
+# scripting language (first line)
+
+/^#! ?\/.*\/python/ {sub(/^#! ?\/.*\/python/,"#! @PYTHON@");}
+/^#! ?\/.*\/perl/ {sub(/^#! ?\/.*\/perl/,"#! /usr/bin/perl");}
+/^#! ?\/.*\/[a-z]{0,2}awk/ {sub(/^#! ?\/.*\/[a-z]{0,2}awk/,"#! /usr/bin/gawk");}
+/^#! ?\/.*\/sh/ {sub(/^#! ?\/.*\/sh/,"#! /bin/bash");}
+
+# add to libexecdir to INC for perl utils.pm
+/^use/ { if (/lib/) { if (/utils.pm|"."/ ) {sub(/utils.pm|"."/,led() )} } }
+
+
+# Replace the placeholders with the values from configure
+/#PERL#/ {sub(/#PERL#/,"/usr/bin/perl");}
+/#GZIP#/ {sub(/#GZIP#/,"/bin/gzip");}
+/#STATEFILES_DIR#/ {sub(/#STATEFILES_DIR#/,"/var/tmp/check_mssql_health");}
+/#PACKAGE_VERSION#/ {sub(/#PACKAGE_VERSION#/,"1.5.8.2");}
+/#MYMODULES_DYN_DIR#/ {sub(/#MYMODULES_DYN_DIR#/,"/usr/local/nagios/libexec");}
+
+{
+	print;
+}
+

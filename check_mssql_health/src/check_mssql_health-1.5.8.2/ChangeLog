@@ -1,0 +1,67 @@
+###############################################
+# Changelog of the check_mssql_health plugin #
+###############################################
+
+1.5.8.2 2011-01-19
+- output a nicer error message if a sqlrelay connection fails
+
+1.5.8.1 2011-01-03
+- bugfix in --mode sql (numeric vs. regexp result)
+
+1.5.8 2010-12-20
+- mode sql can now have a non-numerical output which is compared to a string/regexp
+- new parameter --dbthresholds
+- new mode report can be used to output only the bad news (short,long,html)
+
+1.5.7 2010-09-10
+- fixed a bug in database-free (too much free space was calculated when more than one datafile of a database was on the same filesystem). (Thanks Juergen Essberger)
+- new parameter extra-opts
+
+1.5.6 2010-08-12
+- new parameter --dbthresholds. thresholds can now also be deposited in the table check_mssql_health_thresholds
+- added --currentdb so that the plugin can connect to a non-default database
+- --with-mymodules-dyn-dir on the commandline overrides the configure-option of the same name
+
+1.5.5
+- backup-age is now an alias for the "official" database-backup-age
+- catch the "can't change context to database" error
+- --mode sqlcmd
+
+1.5.3 2009-11-02
+- fixed a bug in mode database-free (results are more accurate now)
+- added new mode backup-age which checks the age (in hours) of the last backup
+
+1.5.2
+- fixed a bug where database names with special characters showed errors. (Thanks Hugh Ranalli) 
+
+1.5.1 2009-05-26
+- added --server which can be used instead of --hostname/port (Thanks Mark Monaghan)
+- lots of fixes. sql server 2000 should now be fully supported. (Thanks Mereghetti Stefano)
+- --warning/--critical were ignored for memory-pool-related modes (Thanks Mereghetti Stefano)
+
+1.5.0.2 2009-05-05
+- fixed a bug which led to error messages when using the plugin with sql server 2000 (Thanks Christian Mies)
+- fixed a bug so sql server 2000 can list-databases (Thanks Mereghetti Stefano)
+
+1.5.0.1 2009-04-29
+- added a security advice to the README (Thanks Mathieu Barret)
+- fixed a bug in database-free (Thanks Michael Luebben)
+- fixed a typo (Thanks Bernd Staudacher)
+
+1.5 - 2009-03-20
+- rewrote database-free so that unrestricted growth is taken into account (limit is disk)
+- added support for SQLRelay
+
+1.2 - 2009-03-19
+- added support for object_name <> SQLServer:... (this caused "unable to aquire"-errors sometimes)
+- fixed a bug in the PNP template
+
+1.1 - 2009-03-11
+- added modes: transactions, latches-wait-time, locks-waits, locks-timeouts,
+               locks-deadlocks, sql-recompilations, total-server-memory
+- beautified the PNP template
+- fixed counter rollovers after database restart
+
+1.0 - 2009-03-10
+----------------
+- Initial release

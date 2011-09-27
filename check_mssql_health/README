@@ -1,0 +1,8 @@
+check_mssql_dbsize
+
+Returns the total number of databases and perfdata pertaining size
+
+check_mssql_health
+
+checks a bunch of variables and can execute custom queries into MS-SQL
+databases.
