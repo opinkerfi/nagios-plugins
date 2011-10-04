@@ -224,30 +224,57 @@ sub init {
     }
   } elsif ($params{mode} =~ /^server::sql/) {
     $self->set_local_db_thresholds(%params);
-    if ($params{regexp}) {
-      # sql output is treated as text
-      if ($params{name2} eq $params{name}) {
-        $self->add_nagios_unknown(sprintf "where's the regexp????");
-      } else {
-        $self->{genericsql} =
-            $self->{handle}->fetchrow_array($params{selectname});
-        if (! defined $self->{genericsql}) {
-          $self->add_nagios_unknown(sprintf "got no valid response for %s",
-              $params{selectname});
-        }
+
+    if ($params{regexp} and ($params{name2} eq $params{name})) {
+      $self->add_nagios_unknown(sprintf "where's the regexp????");
+    }
+    else {
+      my $data;
+      if ($params{sqlname}) {
+        $data = [$self->{handle}->fetchall_array($params{selectname})];
       }
-    } else {
-      # sql output must be a number (or array of numbers)
-      @{$self->{genericsql}} =
-          $self->{handle}->fetchrow_array($params{selectname});
-      if (! (defined $self->{genericsql} &&
-          (scalar(grep { /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/ } @{$self->{genericsql}})) == 
-          scalar(@{$self->{genericsql}}))) {
+      else {
+        # Backwards compatibility: only fetch one row if we don't
+        #                          have a naming column defined.
+        $data = [[$self->{handle}->fetchrow_array($params{selectname})]];
+      }
+      my $rows = scalar(@{ $data });
+      my $cols = scalar(@{ ($rows ? $data->[0] : []) });
+      if ((0 == $rows) or (0 == $cols)) {
+        # Invalid: No rows, or first row has no columns.
         $self->add_nagios_unknown(sprintf "got no valid response for %s",
-            $params{selectname});
-      } else {
-        # name2 in array
-        # units in array
+                                          $params{selectname});
+      }
+      elsif (($params{sqlname} and $params{sqlname} > $cols) or
+             ($params{sqlinfo} and $params{sqlinfo} > $cols) or
+             ($params{sqleval} and $params{sqleval} > $cols)) {
+        # Invalid: sqlname, sqlinfo or sqleval column is out of bounds
+        $self->add_nagios_unknown(sprintf "got too few columns for %s",
+                                          $params{selectname});
+      }
+      elsif ($params{regexp}) {
+        $self->{genericsql} = $data;
+        # No particular conditions...
+      }
+      else {
+        # Scan through the data and make sure it is all either numeric or
+        # one of our magic columns.
+        my $problems = 0;
+        foreach my $row (@{ $data }) {
+          for (my $i = 1; $i <= $cols; $i++) {
+            if ($params{sqlname} and ($i == $params{sqlname})) { next; }
+            if ($params{sqlinfo} and ($i == $params{sqlinfo})) { next; }
+            if ($row->[$i-1] !~ /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/) {
+              $problems += 1;
+            }
+          }
+        }
+        if ($problems) {
+          $self->add_nagios_unknown(sprintf "got no valid response for %s",
+                                            $params{selectname});
+        } else {
+          $self->{genericsql} = $data;
+        }
       }
     }
   } elsif ($params{mode} =~ /^my::([^:.]+)/) {
@@ -297,6 +324,7 @@ sub init {
   } else {
     printf "broken mode %s\n", $params{mode};
   }
+
 }
 
 sub dump {
@@ -410,53 +438,56 @@ sub nagios {
           $self->{connectedusers},
           $self->{warningrange}, $self->{criticalrange});
     } elsif ($params{mode} =~ /^server::sql/) {
-      if ($params{regexp}) {
-        if (substr($params{name2}, 0, 1) eq '!') {
-          $params{name2} =~ s/^!//;
-          if ($self->{genericsql} !~ /$params{name2}/) {
-            $self->add_nagios_ok(
-                sprintf "output %s does not match pattern %s",
-                    $self->{genericsql}, $params{name2}); 
-          } else {
-            $self->add_nagios_critical(
-                sprintf "output %s matches pattern %s",
-                    $self->{genericsql}, $params{name2});
+
+      foreach my $row (@{ $self->{genericsql} }) {
+        # the <sqleval> item in the list will be checked, or the first.
+        my $evalidx = $params{sqleval} ? ($params{sqleval}-1) : 0;
+        my $data = $row->[$evalidx];
+
+        if ($params{regexp}) {
+          my $test = $params{name2};
+          my $true = !($test =~ s/^!//);
+          if ($true == ($data =~ $test)) {
+            $self->add_nagios_ok(sprintf "output %s matches pattern /%s/",
+                                         $data, $params{name2});
           }
-        } else {
-          if ($self->{genericsql} =~ /$params{name2}/) {
-            $self->add_nagios_ok(
-                sprintf "output %s matches pattern %s",
-                    $self->{genericsql}, $params{name2});
-          } else {
-            $self->add_nagios_critical(
-                sprintf "output %s does not match pattern %s",
-                    $self->{genericsql}, $params{name2});
+          else {
+            $self->add_nagios_critical(sprintf "output %s does not match /%s/",
+                                               $data, $params{name2});
           }
         }
-      } else {
-        $self->add_nagios(
-            # the first item in the list will trigger the threshold values
-            $self->check_thresholds($self->{genericsql}[0], 1, 5),
-                sprintf "%s: %s%s",
-                $params{name2} ? lc $params{name2} : lc $params{selectname},
-                # float as float, integers as integers
-                join(" ", map {
-                    (sprintf("%d", $_) eq $_) ? $_ : sprintf("%f", $_)
-                } @{$self->{genericsql}}),
-                $params{units} ? $params{units} : "");
-        my $i = 0;
-        # workaround... getting the column names from the database would be nicer
-        my @names2_arr = split(/\s+/, $params{name2});
-        foreach my $t (@{$self->{genericsql}}) {
-          $self->add_perfdata(sprintf "\'%s\'=%s%s;%s;%s",
-              $names2_arr[$i] ? lc $names2_arr[$i] : lc $params{selectname},
-              # float as float, integers as integers
-              (sprintf("%d", $t) eq $t) ? $t : sprintf("%f", $t),
-              $params{units} ? $params{units} : "",
-            ($i == 0) ? $self->{warningrange} : "",
-              ($i == 0) ? $self->{criticalrange} : ""
-          );  
-          $i++;
+        else {
+          my $info = $params{sqlinfo} ? $row->[$params{sqlinfo}-1] : '';
+          my $name = lc($params{sqlname} ? $row->[$params{sqlname}-1]
+                                        : ($params{name2} ? $params{name2}
+                                                        : $params{selectname}));
+          $self->add_nagios(
+            $self->check_thresholds($data, 1, 5),
+            sprintf("%s: %s%s",
+                    $name,
+                    $info ? $info : join(" ", @{ $row }),
+                    $params{units} ? $params{units} : "")
+          );
+          my $i = 0;
+          # workaround: getting column names from the database would be nicer
+          my @names2 = split(/\s+/, $params{name2});
+          my $prefix = lc($params{sqlname} ? $row->[$params{sqlname}-1].'_'
+                                           : '');
+          for (my $i = 0; $i < scalar(@{ $row }); $i++) {
+            if ($params{sqlname} and ($i+1 == $params{sqlname})) { next; }
+            if ($params{sqlinfo} and ($i+1 == $params{sqlinfo})) { next; }
+            my $t = $row->[$i];
+            $self->add_perfdata(
+              sprintf("\'%s%s\'=%s%s;%s;%s",
+                      $prefix,
+                      lc($names2[$i] ? $names2[$i] : $params{selectname}),
+                      # float as float, integer as integer
+                      (sprintf("%d", $t) eq $t) ? $t : sprintf("%f", $t),
+                      $params{units} ? $params{units} : "",
+                      ($i == $evalidx) ? $self->{warningrange} : "",
+                      ($i == $evalidx) ? $self->{criticalrange} : "")
+            );
+          }
         }
       }
     } elsif ($params{mode} =~ /^my::([^:.]+)/) {
@@ -591,14 +622,6 @@ sub calculate_result {
   if ($ENV{NRPE_MULTILINESUPPORT} &&
       length join(" ", @{$self->{nagios}->{perfdata}}) > 200) {
     $multiline = 1;
-  }
-  if ($multiline) {
-    my $num_ok =  @{$self->{nagios}->{messages}->{ $ERRORS{"OK"} } };
-    my $num_crit =  @{$self->{nagios}->{messages}->{  $ERRORS{"WARNING"} }};
-    my $num_warn =  @{$self->{nagios}->{messages}->{  $ERRORS{"CRITICAL"} }};
-    my $num_unk =  @{$self->{nagios}->{messages}->{  $ERRORS{"UNKNOWN"} }};
-    $self->{nagios_message} .= sprintf "%s ok, %s warnings, %s criticals and %s unknown\n",
-       $num_ok, $num_warn,$num_crit, $num_unk;
   }
   my $all_messages = join(($multiline ? "\n" : ", "), map {
       join(($multiline ? "\n" : ", "), @{$self->{nagios}->{messages}->{$ERRORS{$_}}})

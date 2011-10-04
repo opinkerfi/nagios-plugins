@@ -102,7 +102,7 @@ my @modes = (
       'Elapsed time (in hours) since a database was last backupped' ],
   ['server::sql',
       'sql', undef,
-      'any sql command returning a single number' ],
+      'any sql command' ],
   ['server::database::listdatabases',
       'list-databases', undef,
       'convenience function which lists all databases' ],
@@ -174,19 +174,37 @@ EOUS
   If only a single database should be checked, use the --name parameter.
   The same applies to datafile-related modes.
   
+  Options specific to 'server::sql' mode:
+
+    --sqleval
+       For results with multiple columns, this is the index (counting from
+       1) of the column to evaluate with --warning and/or --critical. If
+       this option is missing, the statement is assumed to return only a
+       single column.
+    --sqlname
+       For results with multiple columns, this is the index (counting from
+       1) of the column use as the output name (instead of --name2). If
+       this option is missing, only the first row will be parsed.
+    --sqlinfo
+       For results with multiple columns, this is the index (counting from
+       1) of a column to present as a detailed explanation.
+
   In mode sql you can url-encode the statement so you will not have to mess
   around with special characters in your Nagios service definitions.
   Instead of 
-  --name="select count(*) from master..sysprocesses"
+
+     --name="select count(*) from master..sysprocesses"
+
   you can say 
-  --name=select%20count%28%2A%29%20from%20master%2E%2Esysprocesses
+
+     --name=select%20count%28%2A%29%20from%20master%2E%2Esysprocesses
+
   For your convenience you can call check_mssql_health with the --encode
   option and it will encode the standard input.
 
-  You can find the full documentation for this plugin at
-  http://www.consol.de/opensource/nagios/check-mssql-health or
-  http://www.consol.com/opensource/nagios/check-mssql-health
-
+  You can find the full documentation for this plugin at:
+     http://www.consol.de/opensource/nagios/check-mssql-health
+  or http://www.consol.com/opensource/nagios/check-mssql-health
 
 EOUS
 #
@@ -257,6 +275,9 @@ my @params = (
     "name=s",
     "name2=s",
     "regexp",
+    "sqleval=i",
+    "sqlname=i",
+    "sqlinfo=i",
     "perfdata",
     "warning=s",
     "critical=s",
@@ -505,6 +526,9 @@ my %params = (
     regexp => $commandline{regexp},
     name => $commandline{name},
     name2 => $commandline{name2} || $commandline{name},
+    sqleval => $commandline{sqleval},
+    sqlname => $commandline{sqlname},
+    sqlinfo => $commandline{sqlinfo},
     units => $commandline{units},
     eyecandy => $commandline{eyecandy},
     statefilesdir => $STATEFILESDIR,
