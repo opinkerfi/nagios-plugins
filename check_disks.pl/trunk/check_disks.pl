@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# nagios: -epn
+
 =head1 PLUGIN
 
     check_disk.pl : check disks on Unix servers
