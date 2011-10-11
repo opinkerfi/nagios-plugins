@@ -95,9 +95,8 @@ def getServiceState(dom, service):
     groupList = dom.getElementsByTagName('group')
     hostname = socket.gethostname()
     serviceState = {}
-    
     for group in groupList:
-        if group.attributes['name'].value == "service:"+service:
+        if group.attributes['name'].value in (service,"service:"+service,"vm:"+service):
             serviceState['owner'] = group.attributes['owner'].value
             serviceState['state'] = group.attributes['state_str'].value
                  
