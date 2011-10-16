@@ -131,6 +131,8 @@ use strict;
 my ($opt_c, $opt_w, $opt_h, $opt_i,$opt_f,$opt_s,$opt_u,$opt_H,$opt_C,$opt_v,
     $opt_html, $opt_srvperf, $opt_r, $opt_R);
 
+$ENV{'PATH'} = "/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins:/usr/local/libexec:/usr/libexec:/usr/local/nagios/libexec";
+
 $opt_u = "nagios";  # Utilisateur pour connexion nrpe
 $opt_i = "";
 $opt_w = "10";      # Valeur par defaut de warning
@@ -198,16 +200,24 @@ my $args;
 #Si on est en local inutile de faire du nrpe
 if($opt_H ne "localhost" and $opt_H ne "127.0.0.1") {
     #$cmd = "ssh $opt_u\@$opt_H '$cmd'";
-    $cmd = "/usr/lib/nagios/plugins/check_nrpe -H $opt_H -c get_disks";
+    $cmd = "check_nrpe -H $opt_H -c get_disks";
     #$cmd = "cat /tmp/df";
     #print "$cmd";
 }
 
 # Envoi commande et renseignement Hashage %disks
 my @output = `$cmd`;
+my $ret = $?;
+
+if ($ret == -1) {
+	print "Could not find " . (split(' ', $cmd))[0] . "\n";
+	exit $EXIT_CODES{'UNKNOWN'};
+}
+
+$ret >>= 8;
 # 2010/02/25 palli@ok.is : Check if $cmd ran successfully
-if ($? > 0) {
-   print "Failed to execute $cmd   : @output\n";
+if ($ret > 0) {
+   print "Failed to execute $cmd: " . join("\n", @output) . "\n";
    exit $EXIT_CODES{'UNKNOWN'} ;
 }
 #
