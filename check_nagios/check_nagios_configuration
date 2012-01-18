@@ -1,0 +1,38 @@
+#!/bin/sh
+
+
+PERFDATA=""
+MESSAGE="Nagios configuration is valid"
+EXIT_CODE=3
+
+TMPFILE=`mktemp`
+nagios -v /etc/nagios/nagios.cfg > $TMPFILE
+RESULT=$?
+
+# grep  -E '^\s+Checked'
+warnings=`grep -c -E "^Warning:" "$TMPFILE"`
+errors=`grep -c -E "^Error:" "$TMPFILE"`
+PERFDATA="warnings=$warnings errors=$errors"
+
+
+# If there are any warnings
+if [ $warnings -gt 0 ]; then
+	MESSAGE="nagios.cfg has $warnings warnings"
+	EXIT_CODE=1
+fi
+
+
+# If nagios -v fails. Config is invalid
+if [ $RESULT -gt 0 ]; then
+	MESSAGE="Could not validate Nagios configuration."
+	EXIT_CODE=2
+fi
+
+if [ $EXIT_CODE -eq "3" ]; then
+	EXIT_CODE=0
+fi
+
+echo "$MESSAGE | $PERFDATA"
+grep -E "^Error|^Warning" "$TMPFILE"
+rm -f TMPFILE
+exit $EXIT_CODE

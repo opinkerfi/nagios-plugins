@@ -6,7 +6,11 @@
 
 __author__  = "Hari Sekhon"
 __title__   = "Nagios Plugin for Yum updates on RedHat/CentOS systems"
-__version__ = "0.7.1"
+__version__ = "0.7.2"
+
+# Changes:
+# 0.7.2 added support for rhel6-style yum output
+
 
 # Standard Nagios return codes
 OK       = 0
@@ -29,19 +33,19 @@ from optparse import OptionParser
 DEFAULT_TIMEOUT = 30
 
 
-def end(status, message):
+def end(status, message, perfdata=''):
     """Exits the plugin with first arg as the return code and the second
     arg as the message to output"""
     
     check = "YUM "
     if status == OK:
-        print "%sOK: %s" % (check, message)
+        print "%sOK: %s | %s" % (check, message, perfdata)
         sys.exit(OK)
     elif status == WARNING:
-        print "%sWARNING: %s" % (check, message)
+        print "%sWARNING: %s | %s" % (check, message, perfdata)
         sys.exit(WARNING)
     elif status == CRITICAL:
-        print "%sCRITICAL: %s" % (check, message)
+        print "%sCRITICAL: %s | %s" % (check, message, perfdata)
         sys.exit(CRITICAL)
     else:
         print "UNKNOWN: %s" % message
@@ -316,22 +320,32 @@ class YumTester:
         cmd = "%s --security check-update" % YUM
 
         output = self.run(cmd)
-
-        re_security_summary = \
-                re.compile("Needed \d+ of \d+ packages, for security")
-        re_no_security_updates_available = \
-                re.compile("No packages needed, for security, \d+ available")
+        
+	re_security_summary_rhel5 = re.compile("Needed \d+ of \d+ packages, for security")
+	re_security_summary_rhel6 = re.compile("\d+ package\(s\) needed for security, out of \d+ available")
+	re_no_security_updates_available_rhel5 = re.compile("No packages needed, for security, \d+ available")
+	re_no_security_updates_available_rhel6 = re.compile("No packages needed for security; \d+ packages available")
         summary_line_found = False
         for line in output:
-            if re_no_security_updates_available.match(line):
+            if re_no_security_updates_available_rhel5.match(line):
                 summary_line_found = True
                 number_security_updates = 0
                 number_total_updates    = line.split()[5]
                 break
-            elif re_security_summary.match(line):
+            if re_no_security_updates_available_rhel6.match(line):
+                summary_line_found = True
+                number_security_updates = 0
+                number_total_updates    = line.split()[5]
+                break
+            if re_security_summary_rhel5.match(line):
                 summary_line_found = True
                 number_security_updates = line.split()[1]
                 number_total_updates    = line.split()[3]
+                break
+            if re_security_summary_rhel6.match(line):
+                summary_line_found = True
+                number_security_updates = line.split()[0]
+                number_total_updates    = line.split()[7]
                 break
 
         if not summary_line_found:

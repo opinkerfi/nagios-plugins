@@ -13,16 +13,16 @@ sort | uniq > $TMP
 
 
 LINES=`cat $TMP | wc -l`
-PERFDATA="'ghost_clients'=$LINES"
+PERFDATA="'ghost_services'=$LINES"
 if [ $LINES -gt 0 ]; then
-	echo "$LINES ghost clients found in Nagios log files | $PERFDATA" 
+	echo "$LINES ghost services found in Nagios log files | $PERFDATA" 
 	echo ""
 	cat $TMP
 	rm -f $TMP
 	exit 1
 fi
 
-echo "No ghost clients found in Nagios log files | $PERFDATA"
+echo "No ghost services found in Nagios log files | $PERFDATA"
 rm -f $TMP
 exit 0
 
