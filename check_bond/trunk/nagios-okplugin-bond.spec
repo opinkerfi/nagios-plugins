@@ -37,6 +37,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %doc README
 %{_libdir}/nagios/plugins/*
+%config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
 %changelog
 * Sun Oct 16 2011  Tomas Edwardsson <tommi@opensource.is> 0.1-2
