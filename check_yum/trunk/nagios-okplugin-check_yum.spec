@@ -11,6 +11,7 @@ Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_yum/releases/
 Requires:	yum-security
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Packager:	Pall Sigurdsson <palli@opensource.is>
+BuildArch: noarch
 
 
 %description
