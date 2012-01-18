@@ -106,16 +106,16 @@ def main(argv):
 	print "Critical: bonding device %s %s" % (interface, bond['mii_status'])
 	sys.exit(2)
 
-	# Some interface in the bond is down
-	for slave in bond['slaves']:
-		if slave['mii_status'] != 'up':
-			outstring = "%s%s down " % (outstring, slave['int'])
-			if retval < 1:
-				retval = 1
+    # Some interface in the bond is down
+    for slave in bond['slaves']:
+	if slave['mii_status'] != 'up':
+	    outstring = "%s%s down " % (outstring, slave['int'])
+	    if retval < 1:
+		retval = 1
 
-	if retval:
-		print "%s: %s%s %s" % (states[retval], outstring, "in bonding device", interface)
-		sys.exit(retval)
+    if retval:
+	print "%s: %s%s %s" % (states[retval], outstring, "in bonding device", interface)
+	sys.exit(retval)
 
     print "OK: bonding device %s up and running" % interface
     sys.exit(0)
