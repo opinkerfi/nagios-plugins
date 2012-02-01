@@ -24,7 +24,7 @@ if [ -z $KRBPASS ]; then
 	exit 3
 fi
 
-OUT=`echo $KRBPASS | /usr/kerberos/bin/kinit "$KRBUSER" 2>&1`
+OUT=`echo $KRBPASS | kinit "$KRBUSER" 2>&1`
 if [ $? -gt 0 ]; then
         echo "Unable to initiate kerberos session: $OUT"
         exit 2
