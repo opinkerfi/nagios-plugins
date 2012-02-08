@@ -20,7 +20,7 @@ use strict;
 
 
 # PATH to check_nrpe
-my $nrpepath = '/nagios/libexec/check_nrpe';
+my $nrpepath = '/usr/lib64/nagios/plugins/check_nrpe';
 
 
 # Create the Nagios plugin object
