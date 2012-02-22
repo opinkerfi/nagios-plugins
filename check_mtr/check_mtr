@@ -1,0 +1,68 @@
+#!/usr/bin/python
+
+from pynag.Plugins import UNKNOWN, WARNING, CRITICAL, OK, simple as Plugin
+from subprocess import Popen, PIPE
+from pprint import pprint
+
+
+
+
+
+## Create the plugin option
+np = Plugin()
+
+np.add_arg('l', 'long-output', 'Allows for long multiline output', required=0, action='store_true')
+
+# Parse the plugin options
+np.activate()
+
+
+p = Popen("mtr -c 4 --raw %s" % (np['host']), shell=True, stdout=PIPE, stderr=PIPE, close_fds=True)
+stdout, stderr = p.communicate('through stdin to stdout')
+if p.returncode > 0:
+	if p.returncode == 127: # File not found, lets print path
+		np.nagios_exit(UNKNOWN, "Unable to find mtr, check that it is installed")
+	else:
+		np.nagios_exit(UNKNOWN, "Unable to run mtr: %s" % (stderr.strip()))
+
+
+mtr_output = {}
+for line in stdout.split("\n"):
+	if not line:
+		continue
+	line.strip()
+	(l_type, l_id, l_data) = line.split(" ", 3)
+
+	if mtr_output.has_key(l_id) == False:
+		mtr_output[l_id] = { 'p': [] }
+
+	if l_type == "p":
+		mtr_output[l_id][l_type].append(int(l_data))
+	else:
+		mtr_output[l_id][l_type] = l_data
+
+
+for k in range(0, len(mtr_output)):
+	obj = str(k)
+	avg = sum(mtr_output[obj]['p']) / len(mtr_output[obj]['p'])
+	np.add_perfdata('hop%s' % (obj), avg)
+	np.add_message(OK, "%s average %imsec" % (mtr_output[obj]['h'], float(avg / 1000)))
+
+
+if np['long-output']:
+	(code, message) = np.check_messages(joinallstr = "\n")
+else:
+	(code, message) = np.check_messages()
+
+# Exit with the relevant code
+np.nagios_exit( code, message )
+
+#h 5 92.43.192.110
+#d 5 neumann.mbl.is
+#p 5 35334
+
+#p 4 22419
+#h 5 92.43.192.110
+#d 5 neumann.mbl.is
+
+
