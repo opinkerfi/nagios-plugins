@@ -14,8 +14,6 @@ PROGNAME=`basename $0`
 PROGPATH=`echo $0 | sed -e 's,[\\/][^\\/][^\\/]*$,,'`
 REVISION=`echo '$Revision: 1.12 $' | sed -e 's/[^0-9.]//g'`
 
-. $PROGPATH/utils.sh
-
 MULTIPATH=/sbin/multipath
 SUDO=/usr/bin/sudo
 LSMOD=/sbin/lsmod
@@ -126,9 +124,15 @@ fi
 
 if [ "$NUMPATHS" ]; then
 	echo "$OUTPUT" | awk -vnumpaths=$NUMPATHS -vrc=0 -vlun= -vtargets=0 '
-	/^\[/ {next} # skip flags
-	/^\\/ {next} # skip devinfo
-   	/^ \\/ {targets++; next} # count targets
+	/^\[/ {next} # skip flags (lenny)
+	/^size=/ {next} # skip flags (squeeze)
+	/^\\/ {next} # skip devinfo (lenny)
+	/policy=/ {next} # skip devinfo (squeeze)
+   	/^ \\/ {targets++; next} # count targets (lenny)
+   	/[0-9]+:[0-9]+:[0-9]+:[0-9]+/ { 
+   		if (/active undef running/) { targets++ }	# count targets (squeeze)
+   		next
+   	} 
 	{
 		# The LUN line
 		# process if this is not first LUN
