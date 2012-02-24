@@ -3,3 +3,7 @@ Checks the status of Linux Devicemapper Multipath devices
 
 == Download ==
 You can get check_multipath directly from our subversion repo [http://opensource.is/trac/browser/nagios-plugins/check_multipath here]
+
+== Blame ==
+Rikki.
+
