@@ -6,6 +6,7 @@ MESSAGE="Nagios configuration is valid"
 EXIT_CODE=3
 
 TMPFILE=`mktemp`
+trap "rm -f $TMPFILE" EXIT
 nagios -v /etc/nagios/nagios.cfg > $TMPFILE
 RESULT=$?
 
