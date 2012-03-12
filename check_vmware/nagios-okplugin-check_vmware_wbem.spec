@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check VMWare 3.x or 4.x via WBEM
 Name:		nagios-okplugin-check_vmware_wbem
-Version:	1.0.0
+Version:	1.0.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -37,5 +37,8 @@ rm -rf %{buildroot}
 #/etc/nrpe.d/check_hpacucli.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 1.0.1-1
+- new package built with tito
+
 * Mon Mar  1 2010  Pall Sigurdsson <palli@opensource.is> 0.1-1
 - Initial packaging
