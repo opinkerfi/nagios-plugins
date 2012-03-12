@@ -37,5 +37,8 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_multipath.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.2-1
+- new package built with tito
+
 * Wed Feb 22 2012  Richard Allen <ra@opensource.is> 0.1-1
 - Initial packaging
