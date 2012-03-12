@@ -2,7 +2,7 @@
 
 Summary:	Nagios Plugins to monitor HP Dataprotector
 Name:		nagios-okplugin-check_dataprotector
-Version:	AUTOVERSION
+Version:	1.0.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System

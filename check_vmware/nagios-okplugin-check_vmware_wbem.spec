@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check VMWare 3.x or 4.x via WBEM
 Name:		nagios-okplugin-check_vmware_wbem
-Version:	AUTOVERSION
+Version:	1.0.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System

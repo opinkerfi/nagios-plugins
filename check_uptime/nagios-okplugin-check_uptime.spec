@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check uptime of a remote host via NRPE
 Name:		nagios-okplugin-check_uptime
-Version:	AUTOVERSION
+Version:	1.0.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
