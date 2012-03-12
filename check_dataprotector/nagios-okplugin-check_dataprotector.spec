@@ -2,7 +2,7 @@
 
 Summary:	Nagios Plugins to monitor HP Dataprotector
 Name:		nagios-okplugin-check_dataprotector
-Version:	1.0.0
+Version:	1.0.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -45,5 +45,8 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_dataprotector.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 1.0.1-1
+- new package built with tito
+
 * Mon Sep  15 2010  Pall Sigurdsson <palli@opensource.is> 0.1-1
 - Initial packaging
