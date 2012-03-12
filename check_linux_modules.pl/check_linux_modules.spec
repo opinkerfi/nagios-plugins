@@ -24,7 +24,7 @@ perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_module.cfg
 
 %install
 rm -rf %{buildroot}
-install -D -p -m 0755 check_linux_module.pl %{buildroot}%{_libdir}/nagios/plugins/check_linux_module.pl
+install -D -p -m 0755 check_linux_modules.pl %{buildroot}%{_libdir}/nagios/plugins/check_linux_modules.pl
 install -D -p -m 0755 nrpe.d/check_module.cfg %{buildroot}/etc/nrpe.d/check_module.cfg
 
 %clean
