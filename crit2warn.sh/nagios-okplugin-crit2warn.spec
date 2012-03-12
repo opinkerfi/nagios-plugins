@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin wrapper that changes critical to warnings
 Name:		nagios-okplugin-crit2warn
-Version:	0.0.1
+Version:	0.0.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -34,5 +34,8 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.2-1
+- new package built with tito
+
 * Mon Mar  1 2010  Tomas Edwardsson <tommi@opensource.is> 0.1-1
 - Initial packaging
