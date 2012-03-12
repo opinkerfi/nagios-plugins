@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugins to check if /var/spool/smssend/incoming has any new messages
 Name:		nagios-okplugin-check_smssend
-Version:	0.0.10
+Version:	0.0.11
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -37,6 +37,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_smssend.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.11-1
+- license added (palli@opensource.is)
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.10-1
 - 
 
