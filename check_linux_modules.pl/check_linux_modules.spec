@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugins to check if a specific linux module exists
 Name:		nagios-okplugin-check_linux_modules
-Version:	0.0.11
+Version:	0.0.12
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -37,6 +37,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_module.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.12-1
+- new package built with tito
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.11-1
 - license added (palli@opensource.is)
 
