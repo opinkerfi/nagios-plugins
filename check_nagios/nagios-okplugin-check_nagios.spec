@@ -2,7 +2,7 @@
 
 Summary:	A set of Nagios plugins to check the health of a nagios host
 Name:		nagios-okplugin-check_nagios
-Version:	0.0.6
+Version:	0.0.7
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -24,7 +24,6 @@ perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_nagios.cfg
 
 %install
 rm -rf %{buildroot}
-check_nagios_configuration check_nagios_ghostservices check_nagios_needs_reload check_nagios_plugin_existance
 install -D -p -m 0755 check_nagios_configuration %{buildroot}%{_libdir}/nagios/plugins/check_nagios_configuration
 install -D -p -m 0755 check_nagios_ghostservices %{buildroot}%{_libdir}/nagios/plugins/check_nagios_ghostservices
 install -D -p -m 0755 check_nagios_needs_reload %{buildroot}%{_libdir}/nagios/plugins/check_nagios_needs_reload
@@ -41,6 +40,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_nagios.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.7-1
+- 
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.6-1
 - new package built with tito
 
