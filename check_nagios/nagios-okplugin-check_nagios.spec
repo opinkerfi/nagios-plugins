@@ -2,7 +2,7 @@
 
 Summary:	A set of Nagios plugins to check the health of a nagios host
 Name:		nagios-okplugin-check_nagios
-Version:	0.0.7
+Version:	0.0.8
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_nagios.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.8-1
+- LICENSE file added (palli@opensource.is)
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.7-1
 - 
 
