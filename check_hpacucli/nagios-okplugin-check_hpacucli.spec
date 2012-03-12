@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check HP Array with hpacucli
 Name:		nagios-okplugin-check_hpacucli
-Version:	0.0.2
+Version:	0.0.3
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -38,5 +38,8 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_hpacucli.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.3-1
+- new package built with tito
+
 * Mon Mar  1 2010  Pall Sigurdsson <palli@opensource.is> 0.1-1
 - Initial packaging
