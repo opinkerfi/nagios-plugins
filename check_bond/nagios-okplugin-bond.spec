@@ -2,8 +2,8 @@
 
 Summary:	A Nagios plugin to check network bond devices
 Name:		nagios-okplugin-bond
-Version:	0.0.1
-Release:	2%{?dist}
+Version:	0.0.2
+Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
 URL:		http://opensource.ok.is/trac/wiki/Nagios-OKPlugin-Bond
@@ -40,6 +40,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.2-1
+- new package built with tito
+
 * Sun Oct 16 2011  Tomas Edwardsson <tommi@opensource.is> 0.1-2
 - Added configuration into package
 
