@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check Linux Devicemapper Multipathing
 Name:		nagios-okplugin-check_multipath
-Version:	0.0.2
+Version:	0.0.3
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -37,6 +37,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_multipath.cfg
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.3-1
+- 
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.2-1
 - new package built with tito
 
