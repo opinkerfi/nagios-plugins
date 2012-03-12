@@ -2,7 +2,7 @@
 
 Summary:	Various nagios plugins to check cpu,memory,interfaces via SNMP
 Name:		nagios-okplugin-check_snmp
-Version:	1.0.0
+Version:	1.0.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -45,5 +45,8 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 1.0.1-1
+- new package built with tito
+
 * Mon Mar  1 2010  Pall Sigurdsson <palli@opensource.is> 0.1-1
 - Initial packaging
