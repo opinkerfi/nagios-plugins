@@ -1,12 +1,11 @@
 %define debug_package %{nil}
 
 %define plugin_name	check_drbd
-%define version		0.0.3
 
 
 Summary:	A Nagios plugin to check Linux Devicemapper Multipathing
 Name:		nagios-okplugin-%{plugin_name}
-Version:	%{version}
+Version:	0.0.4
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -41,6 +40,18 @@ rm -rf %{buildroot}
 /etc/nrpe.d/%{plugin_name}.cfg
 
 %changelog
+* Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is> 0.0.4-1
+- licence and readme removed from specfile (palli@opensource.is)
+
+* Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is>
+- licence and readme removed from specfile (palli@opensource.is)
+
+* Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is>
+- licence and readme removed from specfile (palli@opensource.is)
+
+* Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is>
+- licence and readme removed from specfile (palli@opensource.is)
+
 * Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is> 0.0.3-1
 - new package built with tito
 
