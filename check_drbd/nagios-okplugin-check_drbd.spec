@@ -36,7 +36,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc README LICENSE
+#%doc README LICENSE
 %{_libdir}/nagios/plugins/*
 /etc/nrpe.d/%{plugin_name}.cfg
 
