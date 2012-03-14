@@ -28,7 +28,6 @@ perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/%{plugin_name}.cfg
 
 %install
 rm -rf %{buildroot}
-check_rhcs  check_rhcs_cman_group.sh  check_rhcs_manualfencing.sh
 install -D -p -m 0755 check_rhcs %{buildroot}%{_libdir}/nagios/plugins/check_rhcs
 install -D -p -m 0755 check_rhcs_cman_group.sh %{buildroot}%{_libdir}/nagios/plugins/check_rhcs_cman_group.sh
 install -D -p -m 0755 check_rhcs_manualfencing.sh %{buildroot}%{_libdir}/nagios/plugins/check_rhcs_manualfencing.sh
@@ -45,6 +44,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/%{plugin_name}.cfg
 
 %changelog
+* Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is>
+- 
+
 * Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is> 0.0.3-1
 - new package built with tito
 
