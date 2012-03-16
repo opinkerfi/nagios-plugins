@@ -1,0 +1,22 @@
+#!/bin/sh
+
+
+
+OK=0
+WARNING=1
+CRITICAL=2
+UNKNOWN=3
+
+STATUS=$UNKNOWN
+
+OUTPUT=`fence_tool ls | grep "wait state" | awk '{ print $3}' `
+
+if [ "$OUTPUT" = "none" ]; then
+        STATUS=$OK
+fi
+
+
+echo "Fence wait state (fence_tool ls) is: $OUTPUT"
+exit $STATUS
+
+

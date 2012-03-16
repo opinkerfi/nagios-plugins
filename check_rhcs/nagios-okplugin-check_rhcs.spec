@@ -31,6 +31,7 @@ rm -rf %{buildroot}
 install -D -p -m 0755 check_rhcs %{buildroot}%{_libdir}/nagios/plugins/check_rhcs
 install -D -p -m 0755 check_rhcs_cman_group.sh %{buildroot}%{_libdir}/nagios/plugins/check_rhcs_cman_group.sh
 install -D -p -m 0755 check_rhcs_manualfencing.sh %{buildroot}%{_libdir}/nagios/plugins/check_rhcs_manualfencing.sh
+install -D -p -m 0755 check_rhcs_fence %{buildroot}%{_libdir}/nagios/plugins/check_rhcs_fence
 
 install -D -p -m 0755 nrpe.d/%{plugin_name}.cfg %{buildroot}/etc/nrpe.d/%{plugin_name}.cfg
 
