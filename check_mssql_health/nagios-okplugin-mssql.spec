@@ -2,7 +2,7 @@
 
 Summary:	Nagios plugins to check the status of MS-SQL Servers
 Name:		nagios-okplugin-mssql
-Version:	0.0.5
+Version:	0.0.7
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -39,6 +39,12 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Mon Mar 19 2012 Pall Sigurdsson <palli@opensource.is> 0.0.7-1
+- 
+
+* Mon Mar 19 2012 Pall Sigurdsson <palli@opensource.is>
+- 
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.5-1
 - 
 
