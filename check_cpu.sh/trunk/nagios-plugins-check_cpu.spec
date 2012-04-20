@@ -11,6 +11,7 @@ Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_cpu/releases/
 Requires:	nrpe
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Packager:	Tomas Edwardsson <tommi@ok.is>
+BuildArch:	noarch
 
 %description
 This shell script checks cpu utilization (user,system,iowait,idle in %) 
