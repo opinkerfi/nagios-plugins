@@ -207,16 +207,17 @@ if($opt_H ne "localhost" and $opt_H ne "127.0.0.1") {
 
 # Envoi commande et renseignement Hashage %disks
 my @output = `$cmd`;
+
 my $ret = $?;
+$ret >>= 8;
 
 if ($ret == -1) {
 	print "Could not find " . (split(' ', $cmd))[0] . "\n";
 	exit $EXIT_CODES{'UNKNOWN'};
 }
 
-$ret >>= 8;
 # 2010/02/25 palli@ok.is : Check if $cmd ran successfully
-if ($ret > 0) {
+if ($ret > 1) {
    print "Failed to execute $cmd: " . join("\n", @output) . "\n";
    exit $EXIT_CODES{'UNKNOWN'} ;
 }
