@@ -12,6 +12,7 @@ Requires:	perl-Nagios-Plugin
 Requires:	samba-client, krb5-workstation
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Packager:	Tomas Edwardsson <tommi@ok.is>
+BuildArch:	noarch
 
 
 %description

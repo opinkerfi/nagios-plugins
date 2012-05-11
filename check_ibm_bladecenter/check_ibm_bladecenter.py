@@ -300,7 +300,7 @@ def check_blowers():
 	# Check blower 2
 	if blower2state == "1":
 		nagios_status(ok)
-		add_summary("Blower1 OK. " )
+		add_summary("Blower2 OK. " )
 	else:
 		add_summary("Blower2 NOT OK. ")
 		nagios_status(warning)

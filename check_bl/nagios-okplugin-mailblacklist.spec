@@ -12,6 +12,7 @@ Requires:	nagios-plugins
 Requires:	nagios-plugins-perl
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Packager:	Tomas Edwardsson <tommi@ok.is>
+BuildArch:	noarch
 
 
 %description

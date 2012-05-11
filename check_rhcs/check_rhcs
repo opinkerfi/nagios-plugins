@@ -120,9 +120,12 @@ def main():
             usage()
             sys.exit()
 
-    clustatOutput = os.popen('/usr/sbin/clustat -fx')
-    dom = xml.dom.minidom.parse(clustatOutput)
-
+    try:
+        clustatOutput = os.popen('/usr/sbin/clustat -fx')
+        dom = xml.dom.minidom.parse(clustatOutput)
+    except Exception, e:
+	print "Error: could not parse output of : '/usr/sbin/clustat -fx': ", e
+	sys.exit(3)
     if typeCheck == 'cluster':
 
         # First we query for the state of the cluster itself.
