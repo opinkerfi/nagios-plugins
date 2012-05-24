@@ -45,6 +45,11 @@ rm -rf %{buildroot}
 /etc/nrpe.d/%{plugin_name}.cfg
 
 %changelog
+* Thu May 24 2012 Pall Sigurdsson <palli@opensource.is> 0.0.4-1
+- version bump of check_rhcs (palli@opensource.is)
+- check_rhcs_fence added for rhel6 compatibility (palli@opensource.is)
+- copy/paste error removed from spec file (palli@opensource.is)
+
 * Thu May 24 2012 Pall Sigurdsson <palli@opensource.is>
 - make sure plugin exits cleanly if unable to run clustat -fx command
   (palli@opensource.is)
