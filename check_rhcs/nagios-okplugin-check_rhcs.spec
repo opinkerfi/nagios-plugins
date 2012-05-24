@@ -1,7 +1,7 @@
 %define debug_package %{nil}
 
 %define plugin_name	check_rhcs
-%define version		0.0.3
+%define version		0.0.4
 
 
 Summary:	A Nagios plugin to check Red Hat Cluster suite (rhel5 and rhel6)
@@ -45,6 +45,12 @@ rm -rf %{buildroot}
 /etc/nrpe.d/%{plugin_name}.cfg
 
 %changelog
+* Thu May 24 2012 Pall Sigurdsson <palli@opensource.is>
+- make sure plugin exits cleanly if unable to run clustat -fx command
+  (palli@opensource.is)
+- check_rhcs_fence added for rhel6 compatibility (palli@opensource.is)
+- copy/paste error removed from spec file (palli@opensource.is)
+
 * Wed Mar 14 2012 Pall Sigurdsson <palli@opensource.is>
 - 
 
