@@ -226,20 +226,24 @@ def check_powermodules():
 	status = 3
 	details = 4
 	num_ok = 0
+	num_no = 0
 	for i in powermodules.values():
 		myIndex = i[index]
 		myStatus = i[status]
 		myDetails = i[details]
 		myExists = i[exists]
 		if myIndex == opts.exclude: continue
-		if myStatus != "1":
-			nagios_status(warning)
-			add_summary( 'Powermodule "%s" status "%s". %s. ' % (myIndex,myStatus,myDetails) )
+		if myExists == "0":
+			num_no = num_no + 1
 		else:
-			num_ok = num_ok + 1
+			if myStatus != "1":
+				nagios_status(warning)
+				add_summary( 'Powermodule "%s" status "%s". %s. ' % (myIndex,myStatus,myDetails) )
+			else:
+				num_ok = num_ok + 1
 		add_long('Powersupply "%s" status "%s". %s. ' % (myIndex,myStatus,myDetails) )
 	add_summary( "%s out of %s powermodules are healthy" % (num_ok, len(powermodules) ) )
-	add_perfdata( "'Number of powermodules'=%s" % (len(powermodules) ) )
+	add_perfdata( "'Number of powermodules'=%s" % (len(powermodules) - num_no ) )
 	
 		
 	nagios_status(ok)
