@@ -1,15 +1,36 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+# coding=utf-8
 
-"""Nagios plugin to test for Yum updates on RedHat/CentOS Linux.
+#Copyright © 2008-2012, Hari Sekhon <harisekhon@gmail.com>.
+#Copyright © 2012, Christoph Anton Mitterer <mail@christoph.anton.mitterer.name>.
+#All rights reserved.
+#
+#
+#This program is free software; you can redistribute it and/or
+#modify it under the terms of the GNU General Public License
+#as published by the Free Software Foundation; version 2
+#of the License.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+"""Nagios plugin to check the YUM package management system for package updates.
    Can optionally alert on any available updates as well as just
    security related updates"""
 
 __author__  = "Hari Sekhon"
-__title__   = "Nagios Plugin for Yum updates on RedHat/CentOS systems"
-__version__ = "0.7.2"
+__title__   = "Nagios plugin to check the YUM package management system for package updates."
+__version__ = "0.7.3"
 
 # Changes:
-# 0.7.2 added support for rhel6-style yum output
+# 0.7.2 Addes support for rhel6-style output (palli@opensource.is)
+# 0.7.3 Maintenance taken over by Christoph Anton Mitterer
 
 
 # Standard Nagios return codes
@@ -163,7 +184,7 @@ class YumTester:
 
     def check_returncode(self, returncode, output):
         """Takes the returncode and output (as an array of lines) 
-        of the yum program execution and tests for failures, exits 
+        of the YUM program execution and tests for failures, exits 
         with an appropriate message if any are found"""
 
         if returncode == 0:
@@ -174,7 +195,7 @@ class YumTester:
         elif returncode == 200:
             if "lock" in output[-2] or "another copy is running" in output[-2]:
                 msg = "Cannot check for updates, " \
-                    + "another instance of yum is running"
+                    + "another instance of YUM is running"
                 if self.no_warn_on_lock:
                     end(OK, msg)
                 else:
@@ -185,7 +206,7 @@ class YumTester:
         else:
             if not 'Loading "security" plugin' in output \
                or "Command line error: no such option: --security" in output:
-                end(UNKNOWN, "Security plugin for yum is required. Try to "    \
+                end(UNKNOWN, "Security plugin for YUM is required. Try to "    \
                            + "'yum install yum-security' and then re-run "     \
                            + "this plugin. Alternatively, to just alert on "   \
                            + "any update which does not require the security " \
@@ -282,7 +303,7 @@ class YumTester:
                 raise ValueError
         except ValueError:
             end(UNKNOWN, "Error parsing package information, invalid package " \
-                       + "number, yum output may have changed. Please make "   \
+                       + "number, YUM output may have changed. Please make "   \
                        + "sure you have upgraded to the latest version of "    \
                        + "this plugin. If the problem persists, then please "  \
                        + "contact the author for a fix")
@@ -293,7 +314,7 @@ class YumTester:
         count = 0
         re_package_format = \
                 re.compile("^.+\.(i[3456]86|x86_64|noarch)\s+.+\s+.+$")
-        # This is to work around a yum truncation issue effectively changing
+        # This is to work around a YUM truncation issue effectively changing
         # the package output format. Currently only very long kmod lines
         # are seen to have caused this so we stick to what we know for safety
         # and raise an unknown error on anything else for maximum security
@@ -349,7 +370,7 @@ class YumTester:
                 break
 
         if not summary_line_found:
-            end(WARNING, "Cannot find summary line in yum output. Please "     \
+            end(WARNING, "Cannot find summary line in YUM output. Please "     \
                        + "make sure you have upgraded to the latest version "  \
                        + "of this plugin. If the problem persists, please "    \
                        + "contact the author for a fix")
@@ -358,7 +379,7 @@ class YumTester:
             number_security_updates = int(number_security_updates)
             number_total_updates = int(number_total_updates)
         except ValueError:
-            end(WARNING, "Error parsing package information, yum output " \
+            end(WARNING, "Error parsing package information, YUM output " \
                        + "may have changed. Please make sure you have "     \
                        + "upgraded to the latest version of this plugin. "  \
                        + "If the problem persists, the please contact the " \
@@ -464,7 +485,7 @@ def main():
                        help="Does not distinguish between security and "      \
                           + "non-security updates, but returns critical for " \
                           + "any available update. This may be used if the "  \
-                          + "yum security plugin is absent or you want to "   \
+                          + "YUM security plugin is absent or you want to "   \
                           + "maintain every single package at the latest "    \
                           + "version. You may want to use "                   \
                           + "--warn-on-any-update instead of this option")
@@ -486,7 +507,7 @@ def main():
                        action="store_true",
                        dest="no_cache_update",
                        help="Run entirely from cache and do not update the " \
-                          + "cache when running yum. Useful if you have "    \
+                          + "cache when running YUM. Useful if you have "    \
                           + "'yum makecache' cronned so that the nagios "    \
                           + "check itself doesn't have to do it, possibly "  \
                           + "speeding up execution (by 1-2 seconds in tests)")
@@ -494,22 +515,22 @@ def main():
     parser.add_option( "--no-warn-on-lock",
                        action="store_true",
                        dest="no_warn_on_lock",
-                       help="Return OK instead of WARNING when yum is locked " \
+                       help="Return OK instead of WARNING when YUM is locked " \
                           + "and fails to check for updates due to another "   \
                           + "instance running. This is not recommended from "  \
                           + "the security standpoint, but may be wanted to "   \
                           + "reduce the number of alerts that may "            \
                           + "intermittently pop up when someone is running "   \
-                          + "yum interactively for package management")
+                          + "YUM interactively for package management")
 
     parser.add_option( "--enablerepo",
                        dest="repository_to_enable",
-                       help="Explicitly enables a reposity when calling yum. "
+                       help="Explicitly enables a reposity when calling YUM. "
                           + "Can take a comma separated list of repositories")
 
     parser.add_option( "--disablerepo",
                        dest="repository_to_disable",
-                       help="Explicitly disables a repository when calling yum "
+                       help="Explicitly disables a repository when calling YUM "
                           + "Can take a comma separated list of repositories")
 
     parser.add_option( "-t",
@@ -564,3 +585,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print "Caught Control-C..."
         sys.exit(CRITICAL)
+
