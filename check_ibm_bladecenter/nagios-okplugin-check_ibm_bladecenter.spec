@@ -36,16 +36,10 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %doc README
-%{_libdir}/nagios/plugins/check_ibm_bladecenter.py
+%{_libdir}/nagios/plugins/*
 #%config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
 %changelog
-* Tue Jul 17 2012 Pall Sigurdsson <palli@opensource.is> 1.1.2-1
-- rpm spec file added. version number bumped (palli@opensource.is)
-
-* Tue Jul 17 2012 Pall Sigurdsson <palli@opensource.is> 1.1.1-1
-- new package built with tito
-
 
 * Tue Jul 17 2012  Pall Sigurdsson 1.0.0-1
 - Initial packaging
