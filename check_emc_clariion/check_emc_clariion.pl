@@ -288,7 +288,7 @@ sub check_disk {
 	}
 	close (NAVICLIOUT);
 	if ($disk_ok_count eq 0) {
-		print "No disk were founded !\n";
+		print "No disk were found !\n";
 		$state = 'UNKNOWN';
 	} elsif ($crit_count > 0) {
 		$state='CRITICAL';
