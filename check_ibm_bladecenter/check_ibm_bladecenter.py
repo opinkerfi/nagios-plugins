@@ -271,10 +271,12 @@ def check_switchmodules():
 				add_long("Module%s health bad(%s).\n  post=%s" % (myIndex, healthstate,resultvalue) )
 				add_summary("Problem with Module %s. " % (myIndex))
 			if len(extrainfo) > int(myIndex):
-				myExtraInfo = extrainfo[int(myIndex)-1]
-				module_type = myExtraInfo[22]
-				module_ip = myExtraInfo[6]
-				add_long( "  type=%s ip=%s" % (module_type,module_ip) )
+				try:
+					myExtraInfo = extrainfo[int(myIndex)-1]
+					module_type = myExtraInfo[22]
+					module_ip = myExtraInfo[6]
+					add_long( "  type=%s ip=%s" % (module_type,module_ip) )
+				except: pass
 	if exit_status == ok:
 		add_summary("All switchmodules healthy")
 		
