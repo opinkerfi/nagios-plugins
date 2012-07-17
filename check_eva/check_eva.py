@@ -207,7 +207,7 @@ def run_sssu(system=None, command="ls system full"):
 	commands.append(command)
 
 	commandstring = "sssu "
-	for i in commands: commandstring = commandstring + "'%s' " % i 
+	for i in commands: commandstring = commandstring + '"%s" ' % i 
 	global server_side_troubleshooting
 	if server_side_troubleshooting == True:	
 		commandstring = 'cat "debug/%s"' % command
