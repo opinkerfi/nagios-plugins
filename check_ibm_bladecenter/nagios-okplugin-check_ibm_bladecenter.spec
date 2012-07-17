@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check IBM Bladecenters 
 Name:		nagios-okplugin-check_ibm_bladecenter
-Version:	1.1.1
+Version:	1.1.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,9 @@ rm -rf %{buildroot}
 #%config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
 %changelog
+* Tue Jul 17 2012 Pall Sigurdsson <palli@opensource.is> 1.1.2-1
+- rpm spec file added. version number bumped (palli@opensource.is)
+
 * Tue Jul 17 2012 Pall Sigurdsson <palli@opensource.is> 1.1.1-1
 - new package built with tito
 
