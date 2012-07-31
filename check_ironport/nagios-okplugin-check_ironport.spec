@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check Cisco Ironport 
 Name:		nagios-okplugin-check_ironport
-Version:	1.1.2
+Version:	1.1.3
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -38,6 +38,9 @@ rm -rf %{buildroot}
 #%config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
 %changelog
+* Tue Jul 31 2012 Pall Sigurdsson <palli@opensource.is> 1.1.3-1
+- new package built with tito
+
 
 * Tue Jul 31 2012  Pall Sigurdsson 1.0.0-1
 - Initial packaging
