@@ -33,7 +33,6 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc README
 %{_libdir}/nagios/plugins/*
 #%config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
