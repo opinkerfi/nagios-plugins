@@ -7,7 +7,7 @@ try:
 	
 	c = config(cfg_file='/etc/nagios/nagios.cfg')
 	c.parse()
-	result = c.needs_reparse()
+	result = c.needs_reload()
 	
 	if result == True:
 		print "Warning - Nagios configuration has changed since last restart"
