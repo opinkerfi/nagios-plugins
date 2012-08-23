@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check CPU on Linux servers
 Name:		nagios-plugins-check_cpu
-Version:	0.3
+Version:	1.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -42,6 +42,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 1.0-1
+- Version number bumped
+- Updates buildarch to noarch (tommi@tommi.org)
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.3-1
 - new package built with tito
 
