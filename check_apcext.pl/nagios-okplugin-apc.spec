@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check APC devices
 Name:		nagios-okplugin-apc
-Version:	0.0.3
+Version:	2.1.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -38,6 +38,10 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 2.1.0-1
+- Version number bumped to 2.1.0 (palli@opensource.is)
+- Added noarch buildarch (tommi@tommi.org)
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.3-1
 - new package built with tito
 
