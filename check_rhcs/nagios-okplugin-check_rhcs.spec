@@ -21,7 +21,7 @@ Packager:	Pall Sigurdsson <palli@opensource.is>
 
 %prep
 %setup -q
-perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/%{plugin_name}.cfg
+perl -pi -e "s|/usr/lib64|%{_libdir}|g" nrpe.d/%{plugin_name}.cfg
 
 %build
 
