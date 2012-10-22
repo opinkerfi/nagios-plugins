@@ -14,6 +14,7 @@ use vars qw/ %opt /;
 use strict;
 
 sub getmasked_values ($$);
+sub f2c ($);
 
 if ($ARGV[0] =~ /(--help|-h|help)/ || !defined$ARGV[0]) {
 	&usage;
@@ -415,6 +416,12 @@ APC ACRC In-Row
 
 	exit 3;
 
+}
+
+sub f2c($) {
+	my $f = shift;
+
+	return ($f - 32) * (5/9);
 }
 
 sub getmasked_values ($$) {
