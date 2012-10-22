@@ -44,8 +44,8 @@ my %oids = (
 		'unit'	=> 'degF',
 		'oidbase' => '.1.3.6.1.4.1.5528.100.4.1.1.1',
 		'sensor_key' => 5,
-		'sensor_val' => 2,
-		'$val * 0.1'
+		'sensor_val' => 9,
+		#'cdef' => '$val * 0.1'
 		},
 	'nbmshum' => {
 		'label' => 'Humidity',
