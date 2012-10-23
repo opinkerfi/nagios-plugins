@@ -14,6 +14,7 @@ use vars qw/ %opt /;
 use strict;
 
 sub getmasked_values ($$);
+sub f2c ($);
 
 if ($ARGV[0] =~ /(--help|-h|help)/ || !defined$ARGV[0]) {
 	&usage;
@@ -40,11 +41,11 @@ my %rpduamps;
 my %oids = ( 
 	'nbmstemp' => {
 		'label' => 'Temp',
-		'unit'	=> ($metric ? 'degC' : 'degF'),
+		'unit'	=> 'degF',
 		'oidbase' => '.1.3.6.1.4.1.5528.100.4.1.1.1',
 		'sensor_key' => 5,
-		'sensor_val' => 2,
-		'cdef'  => ($metric ? '$val * 0.1' : '($val * .18) + 32')
+		'sensor_val' => 9,
+		#'cdef' => '$val * 0.1'
 		},
 	'nbmshum' => {
 		'label' => 'Humidity',
@@ -94,13 +95,13 @@ my %oids = (
 		},
 	'acscsupair' => {
 		'label' => 'Supply Air',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.8.0',
 		'cdef'  => '$val * .10'
 		},
 	'acscretair' => {
 		'label' => 'Return Air',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.10.0',
 		'cdef'  => '$val * .10'
 		},
@@ -111,19 +112,19 @@ my %oids = (
 		},
 	'acscracktemp' => {
 		'label' => 'Rack Inlet Temp',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.6.0',
 		'cdef'  => '$val * .10'
 		},
 	'acsccondin' => {
 		'label' => 'Cond Inlet Temp',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.30.0',
 		'cdef'  => '$val * .10'
 		},
 	'acsccondout' => {
 		'label' => 'Cond Outlet Temp',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.28.0',
 		'cdef'  => '$val * .10'
 		},
@@ -151,19 +152,19 @@ my %oids = (
 		},
 	'acrcracktemp' => {
 		'label' => 'Rack Inlet Temp',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.6.0',
 		'cdef'  => '$val * .10'
 		},
 	'acrcsupair' => {
 		'label' => 'Supply Air',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.8.0',
 		'cdef'  => '$val * .10'
 		},
 	'acrcretair' => {
 		'label' => 'Return Air',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.10.0',
 		'cdef'  => '$val * .10'
 		},
@@ -182,13 +183,13 @@ my %oids = (
 		},
 	'acrcflenttemp' => {
 		'label' => 'Entering Fluid Temp',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.23.0',
 		'cdef'  => '$val * .10'
 		},
 	'acrcflrettemp' => {
 		'label' => 'Returning Fluid Temp',
-		'unit'	=> 'F',
+		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.25.0',
 		'cdef'  => '$val * .10'
 		},
@@ -367,6 +368,11 @@ if ($param eq "rpduamps") {
 			$fval = $val;
 		}
 
+		if ($metric and $oids{$param}->{unit} eq 'degF') {
+			$oids{$param}->{unit} = 'degC';
+			$fval = sprintf("%.1f", f2c($fval));
+		}
+
 		if ($fval > $crit) {
         		$retval = 2;
 			$outmsg = "CRITICAL";
@@ -415,6 +421,12 @@ APC ACRC In-Row
 
 	exit 3;
 
+}
+
+sub f2c($) {
+	my $f = shift;
+
+	return ($f - 32) * (5/9);
 }
 
 sub getmasked_values ($$) {
