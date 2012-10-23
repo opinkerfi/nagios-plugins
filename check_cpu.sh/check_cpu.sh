@@ -167,6 +167,11 @@ must be lower than the critical level!"
         exit $ST_UK
     fi
 fi
+which bc >> /dev/null
+if [ $? -gt 0 ]; then
+	echo "UNKNOWN - command 'bc' not found in path. Exiting..."
+	exit 3
+fi
 
 get_cpuvals
 do_output

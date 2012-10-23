@@ -8,7 +8,7 @@ License:	GPLv2+
 Group:		Applications/System
 URL:		http://www.matejunkie.com/cpu-check-plugin-for-nagios/
 Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_cpu/releases/nagios-plugins-check_cpu-%{version}.tar.gz
-Requires:	nrpe
+Requires:	nrpe bc
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Packager:	Tomas Edwardsson <tommi@ok.is>
 BuildArch:	noarch
