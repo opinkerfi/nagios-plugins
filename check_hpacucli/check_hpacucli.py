@@ -26,7 +26,7 @@ debugging = False
 
 
 # No real need to change anything below here
-version="1.0"
+version="1.1"
 ok=0
 warning=1
 critical=2

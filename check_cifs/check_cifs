@@ -23,7 +23,7 @@ use Nagios::Plugin;
 # Create the Nagios plugin object
 my $np = Nagios::Plugin->new(
         usage => "Usage: %s -H <hostname> -u <username> -p <password> -s <share>",
-        version => "0.01",
+        version => "1.0",
 );
 
 # Add valid arguments
