@@ -446,6 +446,9 @@ def check_bladehealth():
 		except: myName = ""
 		if mySeverity == "(No severity)": continue
 		add_long( "blade%s (%s): %s %s" % (myBladeid,myName,mySeverity, myDescription) )
+		if opts.exclude:
+			if myDescription.find(opts.exclude) > -1:
+				continue
 		total_blades += 1
 		if mySeverity == 'Good':
 			nagios_status(ok)
@@ -462,11 +465,17 @@ def check_systemhealth():
 	systemhealthstat = snmpget('1.3.6.1.4.1.2.3.51.2.2.7.1.0')
 	summary = getTable('1.3.6.1.4.1.2.3.51.2.2.7.2.1')
 	index,severity,description,date = (1,2,3,4)
+	# Sometimes chassis delivers warning when absolutely nothing is going on. Lets work around that
+	workaround = [{1: '1', 2: 'Good', 3: 'No critical or warning events', 4: 'No timestamp'}]
 	# Check overall health
 	if systemhealthstat == '255':
 		nagios_status(ok)
 		add_summary("Bladecenter health: OK. ")
 	elif systemhealthstat == "2":
+		if summary.values() == workaround:
+			add_summary("Non-Critical Error: %s " % workaround[0][description] )
+			nagios_status(ok)
+			return
 		nagios_status(warning)
 		add_summary("Non-Critical Error. ")
 	elif systemhealthstat == "4":
@@ -482,6 +491,8 @@ def check_systemhealth():
 		if row[severity] == 'Good':
 			nagios_status(ok)
 		elif row[severity] == 'Warning':
+			nagios_status(warning)
+		elif row[severity] == 'System Level':
 			nagios_status(warning)
 		else:
 			nagios_status(critical)
