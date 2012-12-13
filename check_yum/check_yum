@@ -1,37 +1,12 @@
 #!/usr/bin/python
 # coding=utf-8
 
-#Copyright © 2008-2012, Hari Sekhon <harisekhon@gmail.com>.
-#Copyright © 2012, Christoph Anton Mitterer <mail@christoph.anton.mitterer.name>.
-#All rights reserved.
-#
-#
-#This program is free software; you can redistribute it and/or
-#modify it under the terms of the GNU General Public License
-#as published by the Free Software Foundation; version 2
-#of the License.
-#
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
-#
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
 """Nagios plugin to check the YUM package management system for package updates.
    Can optionally alert on any available updates as well as just
    security related updates"""
 
-__author__  = "Hari Sekhon"
-__title__   = "Nagios plugin to check the YUM package management system for package updates."
-__version__ = "0.7.3"
-
-# Changes:
-# 0.7.2 Addes support for rhel6-style output (palli@opensource.is)
-# 0.7.3 Maintenance taken over by Christoph Anton Mitterer
-
+__title__   = "check_yum"
+__version__ = "0.8.0"
 
 # Standard Nagios return codes
 OK       = 0
@@ -400,8 +375,8 @@ class YumTester:
         """Starts tests and controls logic flow"""
 
         check_yum_usable()
-        self.vprint(3, "%s - Version %s\nAuthor: %s\n" \
-            % (__title__, __version__, __author__))
+        self.vprint(3, "%s - Version %s\n" \
+            % (__title__, __version__))
         
         self.validate_all_variables()
         self.set_timeout()
@@ -454,7 +429,7 @@ class YumTester:
                                                     % number_security_updates
     
         if number_other_updates != 0:
-            if self.warn_on_any_update == True and status != CRITICAL:
+            if self.warn_on_any_update and status != CRITICAL:
                 status = WARNING
             if number_other_updates == 1:
                 message += ". 1 Non-Security Update Available"
@@ -571,8 +546,8 @@ def main():
     tester.warn_on_any_update          = options.warn_on_any_update
 
     if options.version:
-        print "%s - Version %s\nAuthor: %s\n" \
-            % (__title__, __version__, __author__)
+        print "%s - Version %s\n" \
+            % (__title__, __version__)
         sys.exit(OK)
     
     result, output = tester.test_yum_updates()
@@ -586,3 +561,36 @@ if __name__ == "__main__":
         print "Caught Control-C..."
         sys.exit(CRITICAL)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Copyright © ?–?, Hari Sekhon <harisekhon@gmail.com>.
+#Copyright © 2012, Christoph Anton Mitterer <mail@christoph.anton.mitterer.name>.
+#All rights reserved.
+#
+#
+#This program is free software; you can redistribute it and/or
+#modify it under the terms of the GNU General Public License
+#as published by the Free Software Foundation; version 2
+#of the License.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
