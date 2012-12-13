@@ -40,6 +40,8 @@ Usage: """ + sys.argv[0] + """ ([-s serviceName] | [-c])
    Gathers the overall cluster status for the local node
 -s, --service
    Gets the stats of the named service
+-Z, --suspended
+   Checks whether there are any suspended services
 -h, --help
    Display this
 """
@@ -99,23 +101,27 @@ def getServiceState(dom, service):
         if group.attributes['name'].value in (service,"service:"+service,"vm:"+service):
             serviceState['owner'] = group.attributes['owner'].value
             serviceState['state'] = group.attributes['state_str'].value
+            serviceState['flags'] = group.attributes['flags_str'].value
                  
     return serviceState
 
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 's:ch', ['service=', 'cluster', 'help'])
+        opts, args = getopt.getopt(sys.argv[1:], 's:cZh', ['service=', 'cluster', 'supsended', 'help'])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
 
+    check_suspend = False
     for o, a in opts:
         if o in ('-c', '--cluster'):
             typeCheck = 'cluster'
         if o in ('-s', '--service'):
             typeCheck = 'service'
             serviceName = a
+        if o in ('-Z', '--suspended'):
+            check_suspend = True
         if o in ('-h', '--help'):
             usage()
             sys.exit()
@@ -124,8 +130,8 @@ def main():
         clustatOutput = os.popen('/usr/sbin/clustat -fx')
         dom = xml.dom.minidom.parse(clustatOutput)
     except Exception, e:
-	print "Error: could not parse output of : '/usr/sbin/clustat -fx': ", e
-	sys.exit(3)
+        print "Error: could not parse output of : '/usr/sbin/clustat -fx': ", e
+        sys.exit(3)
     if typeCheck == 'cluster':
 
         # First we query for the state of the cluster itself.
@@ -156,6 +162,9 @@ def main():
         if serviceState['state'] != 'started':
             print "CRITICAL: Service " + serviceName + " on " + serviceState['owner'] + " is in " + serviceState['state'] + " state"
             sys.exit(2)
+        elif check_suspend is True and serviceState['flags'] == 'frozen':
+            print "WARNING: Service " + serviceName + " on " + serviceState['owner'] + " is in " + serviceState['flags'] + " state"
+            sys.exit(1)
         else:
             print "OK: Service " + serviceName + " on " + serviceState['owner'] + " is in " + serviceState['state'] + " state"
             sys.exit(0)
