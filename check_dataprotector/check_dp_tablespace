@@ -64,7 +64,6 @@ def check_tablespaces():
 		global default_warning_threshold
 		global nagios_status
 		warn = default_warning_threshold
-		warn = 60
 		max_size = i['max_size'] * 1024
 		curr_size = i['curr_size'] * 1024
 		occupancy = 100.0 * curr_size / max_size 
