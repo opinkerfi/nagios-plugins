@@ -2,7 +2,7 @@
 
 Summary:	Nagios plugin to test for Yum updates on RedHat/CentOS Linux.
 Name:		nagios-okplugin-check_yum
-Version:	0.7.3
+Version:	0.8.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -39,6 +39,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_yum.cfg
 
 %changelog
+* Thu Dec 13 2012 Tomas Edwardsson <tommi@opensource.is> 0.8.0-1
+- New upstream release
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.7.3-1
 - new package built with tito
 

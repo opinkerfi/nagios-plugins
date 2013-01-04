@@ -1,37 +1,12 @@
 #!/usr/bin/python
 # coding=utf-8
 
-#Copyright © 2008-2012, Hari Sekhon <harisekhon@gmail.com>.
-#Copyright © 2012, Christoph Anton Mitterer <mail@christoph.anton.mitterer.name>.
-#All rights reserved.
-#
-#
-#This program is free software; you can redistribute it and/or
-#modify it under the terms of the GNU General Public License
-#as published by the Free Software Foundation; version 2
-#of the License.
-#
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
-#
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
 """Nagios plugin to check the YUM package management system for package updates.
    Can optionally alert on any available updates as well as just
    security related updates"""
 
-__author__  = "Hari Sekhon"
-__title__   = "Nagios plugin to check the YUM package management system for package updates."
-__version__ = "0.7.3"
-
-# Changes:
-# 0.7.2 Addes support for rhel6-style output (palli@opensource.is)
-# 0.7.3 Maintenance taken over by Christoph Anton Mitterer
-
+__title__   = "check_yum"
+__version__ = "0.8.0"
 
 # Standard Nagios return codes
 OK       = 0
@@ -330,9 +305,28 @@ class YumTester:
                        + "of this plugin. If the problem persists, then "      \
                        + "please contact the author for a fix")
 
-        return number_packages
+        return number_packages, "'updates'=%s" % (number_packages)
 
+    def get_security_updateinfo(self):
+        """Fetches errata numbers and package names"""
+
+        cmd = "%s list-security" % YUM
+
+        output = self.run(cmd)
+
+        errata = []
+
+        for line in output:
+	    try:
+                if line.split()[1] != "security":
+                    continue
+            except:
+                continue
+	    (advisoryid, etype, package) = line.split()
+            errata.append( { "name": package, "advisory": advisoryid } )
     
+        return errata
+
     def get_security_updates(self):
         """Gets all updates, but differentiates between
         security and normal updates. Returns a tuple of the number 
@@ -342,10 +336,10 @@ class YumTester:
 
         output = self.run(cmd)
         
-	re_security_summary_rhel5 = re.compile("Needed \d+ of \d+ packages, for security")
-	re_security_summary_rhel6 = re.compile("\d+ package\(s\) needed for security, out of \d+ available")
-	re_no_security_updates_available_rhel5 = re.compile("No packages needed, for security, \d+ available")
-	re_no_security_updates_available_rhel6 = re.compile("No packages needed for security; \d+ packages available")
+        re_security_summary_rhel5 = re.compile("Needed \d+ of \d+ packages, for security")
+        re_security_summary_rhel6 = re.compile("\d+ package\(s\) needed for security, out of \d+ available")
+        re_no_security_updates_available_rhel5 = re.compile("No packages needed, for security, \d+ available")
+        re_no_security_updates_available_rhel6 = re.compile("No packages needed for security; \d+ packages available")
         summary_line_found = False
         for line in output:
             if re_no_security_updates_available_rhel5.match(line):
@@ -400,8 +394,8 @@ class YumTester:
         """Starts tests and controls logic flow"""
 
         check_yum_usable()
-        self.vprint(3, "%s - Version %s\nAuthor: %s\n" \
-            % (__title__, __version__, __author__))
+        self.vprint(3, "%s - Version %s\n" \
+            % (__title__, __version__))
         
         self.validate_all_variables()
         self.set_timeout()
@@ -419,7 +413,7 @@ class YumTester:
         status  = UNKNOWN
         message = "code error - please contact author for a fix"
 
-        number_updates = self.get_all_updates()
+        number_updates, perfdata = self.get_all_updates()
         if number_updates == 0:
             status = OK
             message = "0 Updates Available"
@@ -430,7 +424,7 @@ class YumTester:
             else:
                 message = "%s Updates Available" % number_updates
 
-        return status, message
+        return status, message, perfdata
 
 
     def test_security_updates(self):
@@ -442,6 +436,8 @@ class YumTester:
         
         number_security_updates, number_other_updates = \
                                                     self.get_security_updates()
+
+	perfdata = "'security_updates'=%s 'other_updates'=%s" % (number_security_updates, number_other_updates)
         if number_security_updates == 0:
             status = OK
             message = "0 Security Updates Available"
@@ -452,9 +448,8 @@ class YumTester:
             elif number_security_updates > 1:
                 message = "%s Security Updates Available" \
                                                     % number_security_updates
-    
         if number_other_updates != 0:
-            if self.warn_on_any_update == True and status != CRITICAL:
+            if self.warn_on_any_update and status != CRITICAL:
                 status = WARNING
             if number_other_updates == 1:
                 message += ". 1 Non-Security Update Available"
@@ -462,7 +457,12 @@ class YumTester:
                 message += ". %s Non-Security Updates Available" \
                                                         % number_other_updates
                                 
-        return status, message
+        if number_security_updates and self.long_output:
+            errata = self.get_security_updateinfo()
+            for e in errata:
+                message += "\n%s - %s" % (e['advisory'], e['name'])
+    
+        return status, message, perfdata
 
 
     def vprint(self, threshold, message):
@@ -533,6 +533,13 @@ def main():
                        help="Explicitly disables a repository when calling YUM "
                           + "Can take a comma separated list of repositories")
 
+    parser.add_option( "-l",
+                       "--long-output",
+                       action="store_true",
+                       dest="long_output",
+                       help="Shows more detailed output including the errata "
+                          + "ID.")
+
     parser.add_option( "-t",
                        "--timeout",
                        dest="timeout",
@@ -569,14 +576,15 @@ def main():
     tester.timeout                     = options.timeout
     tester.verbosity                   = options.verbosity
     tester.warn_on_any_update          = options.warn_on_any_update
+    tester.long_output                 = options.long_output
 
     if options.version:
-        print "%s - Version %s\nAuthor: %s\n" \
-            % (__title__, __version__, __author__)
+        print "%s - Version %s\n" \
+            % (__title__, __version__)
         sys.exit(OK)
     
-    result, output = tester.test_yum_updates()
-    end(result, output)
+    result, output, perfdata = tester.test_yum_updates()
+    end(result, output, perfdata)
 
 
 if __name__ == "__main__":
@@ -586,3 +594,36 @@ if __name__ == "__main__":
         print "Caught Control-C..."
         sys.exit(CRITICAL)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Copyright © ?–?, Hari Sekhon <harisekhon@gmail.com>.
+#Copyright © 2012, Christoph Anton Mitterer <mail@christoph.anton.mitterer.name>.
+#All rights reserved.
+#
+#
+#This program is free software; you can redistribute it and/or
+#modify it under the terms of the GNU General Public License
+#as published by the Free Software Foundation; version 2
+#of the License.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
