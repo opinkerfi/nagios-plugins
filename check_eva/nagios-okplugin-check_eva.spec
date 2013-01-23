@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check HP EVA Disk Systems
 Name:		nagios-okplugin-check_eva
-Version:	1.0.1
+Version:	1.0.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,10 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_eva.cfg
 
 %changelog
+* Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 1.0.2-1
+- changed sssu subcommands from being singlequoted to doublequoted for windows
+  compatibility (palli@opensource.is)
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 1.0.1-1
 - new package built with tito
 
