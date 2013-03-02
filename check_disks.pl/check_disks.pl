@@ -24,6 +24,7 @@
      -h | --help     : Display this help
      -w | --warning  : % free space to send warning alert (default 10)
      -c | --critical : % free space to send critical alert (default 5)
+     -I | --inodes  : Check for inodes
      -H | --host     : host you want to check by NRPE (default localhost)
      -u | --user     : user for NRPE connection (default nagios)
      -i | --ignore   : Filesystem you want to ignore
@@ -94,6 +95,9 @@ not be used.
 
     $Log: check_disk.pl,v $
 
+    Revision 1.10 2013/03/01 14:28:00 tryggvi@ok.is
+    o Added support for inodes
+
     Revision 1.9 2010/02/27 00:55:00   palli@ok.is
     o Changed UNKNOWN return code from -1 to 3
     o Modified to use check_nrpe instead of ssh
@@ -129,7 +133,7 @@ use Pod::Usage;
 use strict;
 
 my ($opt_c, $opt_w, $opt_h, $opt_i,$opt_f,$opt_s,$opt_u,$opt_H,$opt_C,$opt_v,
-    $opt_html, $opt_srvperf, $opt_r, $opt_R);
+    $opt_html, $opt_srvperf, $opt_r, $opt_R, $opt_inodes);
 
 $ENV{'PATH'} = "/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins:/usr/local/libexec:/usr/libexec:/usr/local/nagios/libexec";
 
@@ -140,12 +144,13 @@ $opt_c = "5";       # Valeur par defaut de critical
 $opt_H = "localhost";
 $opt_R = q/^$/;
 $opt_r = "";
+my $cmd = "/bin/df -k";
+my $multiply = 1024; # For bytes
 
 my $exclude_re = "(^//|^none)";
 
 my %alldisks; # Tous les disques trouves avec la commande df
 my %checkdisks; # seulement les disque a verifier
-my $cmd = "/bin/df -k";
 my $output ;
 my $retour = 'OK';
 my %EXIT_CODES = (
@@ -168,6 +173,7 @@ GetOptions(
         "i=s" => \$opt_i,   "ignore=s"            => \$opt_i,
         "f=s" => \$opt_f,   "filesystem=s"        => \$opt_f,
         "C=s" => \$opt_C,   "conf=s"              => \$opt_C,
+        "I" => \$opt_inodes,   "inodes"              => \$opt_inodes,
         "v"   => \$opt_v,   "verbose"             => \$opt_v,
         "r=s" => \$opt_r,   "R=s"                 => \$opt_R,
         "html"   => \$opt_html,
@@ -197,10 +203,20 @@ my $args;
 #           ->{critical} : taux critique en % espace libre
 #
 
+if(defined($opt_inodes)){
+    # Using -i for inodes
+    $cmd = "/bin/df -i";
+    $multiply = 1000;
+}
+
 #Si on est en local inutile de faire du nrpe
 if($opt_H ne "localhost" and $opt_H ne "127.0.0.1") {
     #$cmd = "ssh $opt_u\@$opt_H '$cmd'";
-    $cmd = "check_nrpe -H $opt_H -c get_disks";
+    if(defined($opt_inodes)){
+        $cmd = "check_nrpe -H $opt_H -c get_disks_inodes";
+    } else {
+        $cmd = "check_nrpe -H $opt_H -c get_disks";
+    }
     #$cmd = "cat /tmp/df";
     #print "$cmd";
 }
@@ -242,9 +258,9 @@ foreach my $l (@output) {
         my ($s,$u,$f,$pu,$d) = ($1,$2,$3,$4,$5);
         $alldisks{$d}->{pused} = $pu;
         $alldisks{$d}->{pfree} = 100-$pu;
-        $alldisks{$d}->{somme} = $s*1024;
-        $alldisks{$d}->{used} = $u*1024;
-        $alldisks{$d}->{free} = $f*1024;
+        $alldisks{$d}->{somme} = $s*$multiply;
+        $alldisks{$d}->{used} = $u*$multiply;
+        $alldisks{$d}->{free} = $f*$multiply;
 
         # par defaut on prend les taux Warn et Crit specifies
         updateRates($d,$opt_w,$opt_c,$alldisks{$d}->{somme});
@@ -259,9 +275,9 @@ foreach my $l (@output) {
         my ($d,$s,$u,$f,$pu) = ("/$1",$2,$3,$4,$5);
         $alldisks{$d}->{pused} = $pu;
         $alldisks{$d}->{pfree} = 100-$pu;
-        $alldisks{$d}->{somme} = $s*1024;
-        $alldisks{$d}->{used} = $u*1024;
-        $alldisks{$d}->{free} = $f*1024;
+        $alldisks{$d}->{somme} = $s*$multiply;
+        $alldisks{$d}->{used} = $u*$multiply;
+        $alldisks{$d}->{free} = $f*$multiply;
 	#print $l;
 	#print "pused = $pu\n";
 	#print "pfree = 100-$pu\n";
@@ -438,14 +454,15 @@ sub byte2percent {
         print "Erreur : unite inconnue ($unit)\n";
         return 0;
     }
+
     if($unit eq 'K') {
-        $return = sprintf("%d",100*(1024*$value)/$max);
+        $return = sprintf("%d",100*($multiply*$value)/$max);
     } elsif ($unit eq 'M') {
-        $return = sprintf("%d",100*(1024*1024*$value)/$max);
+        $return = sprintf("%d",100*($multiply*$multiply*$value)/$max);
     } elsif ($unit eq 'G') {
-        $return = sprintf("%d",100*(1024*1024*1024*$value)/$max);
+        $return = sprintf("%d",100*($multiply*$multiply*$multiply*$value)/$max);
     } elsif ($unit eq 'T') {
-        $return = sprintf("%d",100*(1024*1024*1024*1024*$value)/$max);
+        $return = sprintf("%d",100*($multiply*$multiply*$multiply*$multiply*$value)/$max);
     }
     #Borne a 100 %
     if($return > 100) { 
@@ -460,8 +477,8 @@ sub byte2human {
 
     my @units = qw/B K M G T/;
 
-    while (($value / 1024) >= 1) {
-	$value /= 1024;
+    while (($value / $multiply) >= 1) {
+	$value /= $multiply;
 	$i++;
     }
     return sprintf('%.1f%s',$value, $units[$i]);
