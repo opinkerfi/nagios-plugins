@@ -318,7 +318,7 @@ class YumTester:
 
         for line in output:
 	    try:
-                if line.split()[1] != "security":
+                if line.split()[1] != "security" and line.split()[1][-4:] != "Sec.":
                     continue
             except:
                 continue
