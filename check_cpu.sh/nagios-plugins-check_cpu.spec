@@ -34,6 +34,9 @@ install -D -p -m 0755 nrpe.d/check_cpu.cfg %{buildroot}/etc/nrpe.d/check_cpu.cfg
 %clean
 rm -rf %{buildroot}
 
+%post
+/sbin/service nrpe reload
+
 %files
 %defattr(-,root,root,-)
 #%doc README LICENSE
