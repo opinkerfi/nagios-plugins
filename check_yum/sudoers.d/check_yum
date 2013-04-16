@@ -1,0 +1,2 @@
+Defaults:nrpe	!requiretty
+nrpe		ALL = (root) NOPASSWD: /usr/lib/nagios/plugins/check_yum
