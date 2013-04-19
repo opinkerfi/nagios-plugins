@@ -35,5 +35,5 @@ fi
 
 echo "$MESSAGE | $PERFDATA"
 grep -E "^Error|^Warning" "$TMPFILE"
-rm -f TMPFILE
+rm -f $TMPFILE
 exit $EXIT_CODE
