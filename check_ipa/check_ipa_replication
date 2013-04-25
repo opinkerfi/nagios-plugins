@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import ldap
-from pynag.Plugins import PluginHelper,critical
+from pynag.Plugins import PluginHelper,critical, warning
 
 plugin = PluginHelper()
 
@@ -48,5 +48,9 @@ for rhost in replication:
     plugin.add_summary("Replica", rhost[1]['nsDS5ReplicaHost'][0], "Status:", rhost[1]['nsds5replicaLastUpdateStatus'][0])
     if rhost[1]['nsds5replicaLastUpdateStatus'][0][:2] != "0 ":
         plugin.status(critical)
+
+if not len(replication):
+    plugin.add_summary("Warning: No replicas found")
+    plugin.status(warning)
 
 plugin.exit()
