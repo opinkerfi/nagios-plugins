@@ -1,0 +1,52 @@
+#!/usr/bin/python 
+# Copyright 2013, Tomas Edwardsson 
+#
+# This script is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This script is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import ldap
+from pynag.Plugins import PluginHelper,critical
+
+plugin = PluginHelper()
+
+plugin.parser.add_option('-u', help="ldap uri", dest="uri")
+plugin.parser.add_option('-D', help="bind DN", dest="binddn")
+plugin.parser.add_option('-w', help="bind password", dest="bindpw")
+plugin.parse_arguments()
+
+if not plugin.options.uri:
+    plugin.parser.error('-u (uri) argument is required')
+
+try:
+    l = ldap.initialize(plugin.options.uri)
+
+    if plugin.options.binddn:
+        l.bind_s(plugin.options.binddn, plugin.options.bindpw)
+
+    replication = l.search_s('cn=config', 
+        ldap.SCOPE_SUBTREE, 
+        '(objectclass=nsds5replicationagreement)',
+        ['nsDS5ReplicaHost', 'nsds5replicaLastUpdateStatus'])
+except Exception, e:
+    plugin.status(critical)
+    plugin.add_summary("Unable to initialize ldap connection: %s" % (e))
+    plugin.exit()
+
+
+# Loop through replication agreements
+for rhost in replication:
+    plugin.add_summary("Replica", rhost[1]['nsDS5ReplicaHost'][0], "Status:", rhost[1]['nsds5replicaLastUpdateStatus'][0])
+    if rhost[1]['nsds5replicaLastUpdateStatus'][0][:2] != "0 ":
+        plugin.status(critical)
+
+plugin.exit()
