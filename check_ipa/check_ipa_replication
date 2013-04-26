@@ -48,7 +48,7 @@ for rhost in replication:
     plugin.add_summary("Replica %s Status: %s" % (rhost[1]['nsDS5ReplicaHost'][0], rhost[1]['nsds5replicaLastUpdateStatus'][0]))
     if rhost[1]['nsds5replicaLastUpdateStatus'][0][:2] != "0 ":
         plugin.status(critical)
-    else
+    else:
         plugin.status(ok)
 
 if not len(replication):
