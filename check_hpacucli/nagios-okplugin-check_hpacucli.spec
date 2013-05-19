@@ -19,7 +19,7 @@ Checks HP Array with hpacucli
 %prep
 %setup -q
 perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_hpacucli.cfg
-perl -pi -e "s|/usr/lib|%{_libdir}|g" sudoers.d/*
+perl -pi -e "s|/usr/lib64|%{_libdir}|g" sudoers.d/*
 
 %build
 
@@ -28,6 +28,7 @@ perl -pi -e "s|/usr/lib|%{_libdir}|g" sudoers.d/*
 rm -rf %{buildroot}
 install -D -p -m 0755 check_hpacucli.py %{buildroot}%{_libdir}/nagios/plugins/check_hpacucli.py
 install -D -p -m 0755 nrpe.d/check_hpacucli.cfg %{buildroot}/etc/nrpe.d/check_hpacucli.cfg
+install -D -p -m 0755 sudoers.d/check_hpacucli %{buildroot}/etc/sudoers.d/check_hpacucli
 
 %clean
 rm -rf %{buildroot}
