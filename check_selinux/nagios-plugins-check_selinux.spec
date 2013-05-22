@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check SELinux status on Linux servers
 Name:		nagios-plugins-check_selinux
-Version:	1.0
+Version:	1.1
 Release:	1%{?dist}
 License:	GPLv3+
 Group:		Applications/System
@@ -35,5 +35,8 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed May 22 2013 Tomas Edwardsson <tommi@tommi.org> 1.1-1
+- new package built with tito
+
 * Wed May 22 2013 Tomas Edwardsson <tommi@opensource.is> 1.0-1
 - Initial packaging
