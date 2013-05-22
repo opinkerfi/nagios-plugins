@@ -1,7 +1,6 @@
 #!/bin/sh
 TMP=`mktemp`
-LAST_HOUR=`date "+%b %e %H:" -d "1 hour ago"`
-CURRENT_HOUR=`date "+%b %e %H:"`
+EPOCH_HOUR_AGO=$(( $(date +%s) - 3600 ))
 
 exit_unknown() {
 	msg="$1"
@@ -12,7 +11,8 @@ exit_unknown() {
 
 find_nagios_log() {
 	# Try to locate the nagios log, fallback to messages log
-	for log in /var/log/nagios/nagios.log /var/log/nagios3/nagios.log /var/log/messages
+	for log in /var/log/nagios/nagios.log /var/log/nagios3/nagios.log /var/spool/nagios/nagios.log \
+		/usr/local/nagios/var/nagios.log
 	do
 		if [ -e "${log}" ]; then
 			echo ${log}
@@ -26,7 +26,7 @@ LOG=$(find_nagios_log) || exit_unknown "Unable to locate logfile for parsing"
 
 tail -n 1 ${LOG} &> ${TMP} || exit_unknown "Unable to parse logfile: $(cat ${TMP})"
 tail -n 2000 ${LOG} | \
-grep -E "$CURRENT_HOUR|$LAST_HOUR" | \
+awk "BEGIN { FS=\"[\\\\[\\\\]]\" } \$2 > ${EPOCH_HOUR_AGO} {print \$0}" | \
 grep "Passive check result was received" | \
 grep -i "could not be found"  | \
 sed 's/.*Passive check result was received for service //' | \
