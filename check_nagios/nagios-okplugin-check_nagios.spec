@@ -2,7 +2,7 @@
 
 Summary:	A set of Nagios plugins to check the health of a nagios host
 Name:		nagios-okplugin-check_nagios
-Version:	1.1
+Version:	1.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,12 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_nagios.cfg
 
 %changelog
+* Wed May 22 2013 Tomas Edwardsson <tommi@tommi.org> 1.2-1
+- Modified to parse on epoch rather that syslog date (tommi@tommi.org)
+- Emit unknown if unable to open the logfile and detect location
+  (tommi@tommi.org)
+- Fix tmp file cleanup (palli@opensource.is)
+
 * Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 1.1-1
 - Version number bumped
 - bugfix, check_nagios_needs_reload check for reload instead of reparse
