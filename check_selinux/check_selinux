@@ -17,7 +17,7 @@
 
 # About this script
 #
-# Checks uptime of a specified host, using NRPE is host is remote
+# Checks selinux status of a specified host, using NRPE if the host is remote
 
 HOSTN="localhost" 		# By default check localhost
 CHECK_COMMAND="getenforce" 	# Default command to check selinux status
@@ -62,14 +62,14 @@ done
 
 
 
-# We we are not checking localhost, lets get remote uptime via NRPE
+# We we are not checking localhost, lets get remote selinux status via NRPE
 if [ "$HOSTN" != "localhost" ]; then
 	export PATH=$PATH:/usr/lib/nagios/plugins:/usr/lib64/nagios/plugins:/nagios/usr/lib/nagios/plugins
 	CHECK_COMMAND="check_nrpe -H $HOSTN -c get_selinux"
 fi
 
 
-# Get the uptime, raise error if we are unsuccessful
+# Get the selinux status, raise error if we are unsuccessful
 OUTPUT=`$CHECK_COMMAND`
 RESULT=$?
 
