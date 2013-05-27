@@ -164,7 +164,7 @@ def run_hpacucli(run_type='controllers', controller=None):
         else:
             end()
             return
-        command = command % (subcommand, identifier)
+        command = command % (identifier, subcommand)
     debug(command)
     if sudo:
         command = "sudo " + command
