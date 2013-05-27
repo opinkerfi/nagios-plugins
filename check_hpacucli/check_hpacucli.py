@@ -173,6 +173,7 @@ def run_hpacucli(type='controllers', controller=None):
 	for i in output:
 		if len(i) == 0: continue
 		if i.strip() == '': continue
+		if i.startswith('Note:'): continue
 		if type=='controllers' and i[0] != ' ': # No space on first line
 			if object and not object in objects: objects.append(object)
 			object = {}
