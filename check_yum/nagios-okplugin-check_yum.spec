@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check yum updates via NRPE
 Name:		nagios-okplugin-check_yum
-Version:	0.8.1
+Version:	0.8.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -45,6 +45,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_yum.cfg
 
 %changelog
+* Mon May 27 2013 Tomas Edwardsson <tommi@tommi.org> 0.8.2-1
+- Fixed nrpe with invalid libdir (tommi@tommi.org)
+
 * Mon May 27 2013 Tomas Edwardsson <tommi@tommi.org> 0.8.1-1
 - Added missing nrpe config (tommi@tommi.org)
 - Initial rpm packaging (tommi@tommi.org)
