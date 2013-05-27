@@ -29,6 +29,7 @@ perl -pi -e "s|/usr/lib|%{_libdir}|g" sudoers.d/check_yum
 rm -rf %{buildroot}
 install -D -p -m 0755 check_yum %{buildroot}%{_libdir}/nagios/plugins/check_yum
 install -D -p -m 0440 sudoers.d/check_yum %{buildroot}/etc/sudoers.d/check_yum
+install -D -p -m 0644 nrpe.d/check_yum.cfg %{buildroot}/etc/nrpe.d/check_yum.cfg
 
 
 %clean
@@ -40,6 +41,7 @@ rm -rf %{buildroot}
 #%{_libdir}/nagios/plugins/*
 %{_libdir}/nagios/plugins/check_yum
 /etc/sudoers.d/check_yum
+/etc/nrpe.d/check_yum.cfg
 
 %changelog
 * Tue Apr 16 2013 Tomas Edwardsson <tommi@opensource.is> 0.8.0-2
