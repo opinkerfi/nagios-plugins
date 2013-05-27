@@ -24,6 +24,7 @@ A Nagios plugin to check for updates using yum via NRPE
 
 %build
 perl -pi -e "s|/usr/lib|%{_libdir}|g" sudoers.d/check_yum
+perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_yum.cfg
 
 %install
 rm -rf %{buildroot}
