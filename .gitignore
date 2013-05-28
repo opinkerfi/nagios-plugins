@@ -1,0 +1,9 @@
+*.pyc
+*.swp
+.project
+.pydevproject
+.settings
+pagekite*
+.idea
+MANIFEST
+dist
