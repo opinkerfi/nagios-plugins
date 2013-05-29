@@ -6,22 +6,21 @@ import cx_Oracle
 helper = pynag.Plugins.PluginHelper()
 
 
-helper.parser.add_option('--host', help="MSSQL Server to connect to", dest="host")
-helper.parser.add_option('--username', help="MSSQL Username to connect with", dest="username")
-helper.parser.add_option('--password', help="MSSQL Server to connect to", dest="password")
-helper.parser.add_option('--database', help="MSSQL Database", dest="database")
+helper.parser.add_option('--username', help="Username to the database", dest="username")
+helper.parser.add_option('--password', help="Log in with this password", dest="password")
+helper.parser.add_option('--tns', help="TNS name to use", dest="tns")
 helper.parser.add_option('--query', help="MSSQL Query to execute", dest="query")
+helper.parser.add_option('--oracle_home', help="Set $ORACLE_HOME to this", dest="oracle_home")
 
 # When parse_arguments is called some default options like --threshold and --no-longoutput are automatically added
 helper.parse_arguments()
 
 
-host = helper.options.host
 username = helper.options.username
 password = helper.options.password
-database = helper.options.database
+tns = helper.options.database
 query = helper.options.query
-#enable_debugging = helper.options.debug
+
 enable_debugging = helper.options.verbose
 
 def debug(message):
@@ -29,14 +28,14 @@ def debug(message):
     print "debug: %s" % str(message)
 
   
-if not host:
-  helper.parser.error('--host is required')
 if not username:
   helper.parser.error('--username is required')
 if not password:
   helper.parser.error('--password is required')
-if not database:
-  helper.parser.error('--database is required')
+if not tns:
+  helper.parser.error('--tns is required')
+if not oracle_home is None:
+
 
 
 
