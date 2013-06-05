@@ -17,7 +17,7 @@
 
 # Enumerates interfaces and their operstate (up/down/unknown).
 
-__author__ = 'tommi'
+__author__ = 'Tomas Edwardsson <tommi@tommi.org>'
 
 from subprocess import PIPE, Popen
 import os
@@ -32,7 +32,6 @@ helper.parser.add_option('-H', "--hostname", help="Check interface on remote hos
 helper.parser.add_option('-l', "--list-interfaces", help="List interfaces", dest="list_interfaces", action="store_true")
 
 helper.parse_arguments()
-# /usr/lib/nagios/plugins:/usr/lib64/nagios/plugins:/usr/local/libexec:/usr/libexec:/usr/local/nagios/libexec
 
 local_env = os.environ
 local_env["PATH"] += ":%s" % (":".join([
@@ -58,7 +57,7 @@ def get_interfaces():
             interfaces.append((interface, status))
 
     except Exception, e:
-        helper.add_summary("Unable to get interfaces: %s" % e)
+        helper.add_summary("Unable to get interfaces \"%s\": %s" % (" ".join(command), e))
         helper.status(unknown)
         helper.exit()
     return interfaces
