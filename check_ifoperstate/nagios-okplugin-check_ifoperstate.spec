@@ -3,7 +3,7 @@
 
 Summary:	A Nagios plugin to check interface operator status
 Name:		nagios-okplugin-%{plugin}
-Version:	0.0.1
+Version:	0.0.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -37,3 +37,6 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Wed Jun 05 2013 Tomas Edwardsson <tommi@tommi.org> 0.0.2-1
+- new package built with tito
+
