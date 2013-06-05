@@ -18,7 +18,7 @@ helper.parse_arguments()
 
 username = helper.options.username
 password = helper.options.password
-tns = helper.options.database
+tns = helper.options.tns
 query = helper.options.query
 
 enable_debugging = helper.options.verbose
@@ -34,21 +34,25 @@ if not password:
   helper.parser.error('--password is required')
 if not tns:
   helper.parser.error('--tns is required')
-if not oracle_home is None:
+#if not oracle_home is None:
+
 
 
 
 
 # Actual coding logic starts
 
-conn = cx_Oracle.connect(username, password, database)
+conn = cx_Oracle.connect(username, password, tns)
 debug("connecting to host")
 cur = conn.cursor()
 debug("Executing sql query: %s" % query)
 cur.execute(query)
 
 status,text = None,None
+problem_items = 0
+total_items = 0
 for row in cur:
+  total_items += 1
   debug(row)
   if len(row) > 0:
     status = row[0]
@@ -61,16 +65,18 @@ for row in cur:
   if status not in pynag.Plugins.state_text:
     helper.add_summary("Invalid status: %s" % status)
     status = pynag.Plugins.unknown
+  if status > 0:
+    problem_items += 1
+    helper.add_summary(text)
 
   helper.status(status)
   helper.add_long_output("%s: %s" % (pynag.Plugins.state_text.get(status,'unknown'), text) )
   
-
+if total_items == 0:
+  helper.add_summary("SQL Query returned 0 rows")
+  helper.status(pynag.Plugins.unknown)
 if not helper.get_summary():
-  if not text:
-    helper.add_summary("Hey! Af hverju er enginn texti?")
-  else: 
-    helper.add_summary(text)
+  helper.add_summary("%s items checked. %s problems" % (total_items, problem_items))
 
 helper.check_all_metrics()
 helper.exit()
