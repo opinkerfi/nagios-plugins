@@ -3,7 +3,7 @@
 
 Summary:	A Nagios plugin to check multiple websites
 Name:		nagios-okplugin-%{plugin}
-Version:	0.1.0
+Version:	0.1.1
 Release:	1%{?dist}
 License:	GPLv3+
 Group:		Applications/System
@@ -38,3 +38,6 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Thu Jun 06 2013 Tomas Edwardsson <tommi@tommi.org> 0.1.1-1
+- new package built with tito
+
