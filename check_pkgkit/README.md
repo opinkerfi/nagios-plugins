@@ -22,8 +22,18 @@ Caveats
 Dependencies
 ============
 
-pynag-0.4.7+
-Known to work with PackageKit 0.7.6 or later
+* pynag-0.4.7+
+* Known to work with PackageKit 0.7.6 or later
+
+Install
+=======
+
+* Install pynag (available through your favorite package manager)
+* Install PackageKit (packagekit in Debian)
+
+```
+wget https://raw.github.com/opinkerfi/nagios-plugins/master/check_pkgkit/check_pkgkit
+```
 
 Room for improvement
 ====================
