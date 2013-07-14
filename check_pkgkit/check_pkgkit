@@ -28,7 +28,7 @@ def pkcon_get_updates():
             results_section = True
         elif results_section:
             update_type = line[:13].replace(' ', '')
-            update_package = line [14:].strip()
+            update_package = line [13:].strip()
 
             if update_type not in update_types:
                 update_types[update_type] = []
