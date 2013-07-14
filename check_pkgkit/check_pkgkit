@@ -1,0 +1,46 @@
+#!/usr/bin/python
+#
+# Copyright 2013, Tomas Edwardsson <tommi@tommi.org>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+from subprocess import Popen, PIPE
+
+def pkcon_get_updates():
+    update_types = {}
+    p = Popen(["pkcon", "get-updates"], stdout=PIPE)
+    results_section = False
+    for line in p.stdout.readlines():
+	line = line.strip()
+        if results_section == False and line == "Results:":
+            results_section = True
+        elif results_section:
+            update_type = line[:13].replace(' ', '')
+            update_package = line [14:].strip()
+
+            if update_type not in update_types:
+                update_types[update_type] = []
+            update_types[update_type].append(update_package)
+
+    return update_types
+
+def main():
+    pkg_updates = pkcon_get_updates()
+            
+    for update_type in pkg_updates:
+        print "%s: %i" % (update_type, len(pkg_updates[update_type]))
+
+if __name__ == "__main__":
+    main()
