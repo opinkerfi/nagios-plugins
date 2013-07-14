@@ -1,7 +1,12 @@
+Draft
+=====
+
+I haven't finished the implementation yet.
+
 About
 =====
 
-This plugin checks for available updates using PackageKit
+This Nagios plugin checks for available updates using PackageKit
 http://packagekit.org/ on Linux systems
 
 Why a new plugin?
