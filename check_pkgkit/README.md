@@ -10,7 +10,7 @@ Why a new plugin?
 There are already plugins out there like check_yum and check_apt which do
 check for updates but they are distribution specific. The main drivers are:
 
-* Can run unprivileged
+* Can run unprivileged, for instance the nrpe user
 * No sudo/selinux problems
 * Non distribution specific, works on debian, ubuntu, fedora, centos, rhel...
 
