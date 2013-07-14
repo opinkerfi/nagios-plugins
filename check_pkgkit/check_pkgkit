@@ -41,6 +41,8 @@ def main():
             
     for update_type in pkg_updates:
         print "%s: %i" % (update_type, len(pkg_updates[update_type]))
+        for pkg in pkg_updates[update_type]:
+            print "  %s" % pkg
 
 if __name__ == "__main__":
     main()
