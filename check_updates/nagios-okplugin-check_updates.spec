@@ -15,6 +15,7 @@ BuildArch:	noarch
 Requires:	nrpe
 Requires:	pynag
 Requires:	PackageKit
+Conflicts:	nagios-okplugin-check_yum
 
 
 %description
