@@ -15,34 +15,87 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
 from subprocess import Popen, PIPE
+from pynag.Plugins import PluginHelper, unknown, ok
+
+known_types = ['Enhancement', 'Normal', 'Bug fix', 'Security']
+
+def main():
+    p = PluginHelper()
+    p.parse_arguments()
+    p.status(ok)
+    opt = p.options
+
+
+    total_updates = 0
+    pkg_updates = {}
+    try:
+        total_updates, pkg_updates = pkcon_get_updates()
+    except Exception, e:
+        p.add_summary("Error: " + e.message)
+        p.status(unknown)
+        p.exit()
+
+    p.add_summary("Total: %i, " % total_updates +
+                  ", ".join([ "%s: %i" % (x, len(pkg_updates[x]) ) for x in pkg_updates.keys() ]))
+    p.add_metric("total", total_updates)
+    for update_type in pkg_updates:
+        if len(pkg_updates[update_type]):
+            p.add_long_output(update_type)
+            p.add_metric(update_type.lower(), len(pkg_updates[update_type]))
+            for pkg in pkg_updates[update_type]:
+                p.add_long_output("  %s" % pkg)
+
+    p.check_all_metrics()
+    p.exit()
 
 def pkcon_get_updates():
-    update_types = {}
-    p = Popen(["pkcon", "get-updates"], stdout=PIPE)
+    """
+    Fetches all package updates and returns a tuple containing:
+        total_updates,
+        dictionary where the type of update is the key and the value is a array of package names.
+
+    :return: { "Bug fix": [ "pkg-1.0.1", "anthr-pkg-3.1.4" ], "Security": [ "pkg2-2.1.1" ],
+    """
+    update_types = { }
+
+    stdout = ""
+    stderr = ""
+    rc = 255
+    try:
+        p = Popen(["pkcon", "get-updates"], stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p.communicate()
+        rc = p.wait() >> 8
+    except OSError, e:
+        if e.errno == 2:
+            raise Exception("%s - PackageKit not installed?" % (e.strerror))
+
+    total_updates = 0
     results_section = False
-    for line in p.stdout.readlines():
-	line = line.strip()
-        if results_section == False and line == "Results:":
+    for line in stdout.split("\n"):
+        if not line:
+            continue
+        if results_section is False and line == "Results:":
             results_section = True
         elif results_section:
-            update_type = line[:13].replace(' ', '')
-            update_package = line [13:].strip()
+            update_type = line[:13].strip()
+            update_package = line[13:].strip()
 
             if update_type not in update_types:
                 update_types[update_type] = []
             update_types[update_type].append(update_package)
+            total_updates += 1
 
-    return update_types
+    if rc > 0:
+        raise Exception("pkcon returned non zero return code %i, output:\n%s\nstderr output:\n%s" % (rc, stdout, stderr))
+    if results_section is False:
+        raise Exception("pkcon returned no 'Results:' section. Output of pkcon command:\n" + stdout)
 
-def main():
-    pkg_updates = pkcon_get_updates()
-            
-    for update_type in pkg_updates:
-        print "%s: %i" % (update_type, len(pkg_updates[update_type]))
-        for pkg in pkg_updates[update_type]:
-            print "  %s" % pkg
+    for t in known_types:
+        if t not in update_types:
+            update_types[t] = []
+    return (total_updates, update_types)
+
 
 if __name__ == "__main__":
     main()
