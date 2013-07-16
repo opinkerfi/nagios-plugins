@@ -1,5 +1,5 @@
 %define debug_package %{nil}
-%define plugin check_updates
+%define plugin check_package_updates
 
 Summary:	A Nagios plugin to check operating system updates
 Name:		nagios-okplugin-%{plugin}
