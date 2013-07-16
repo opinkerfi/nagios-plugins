@@ -18,6 +18,25 @@ check for updates but they are distribution specific. The main drivers are:
 * No sudo/selinux problems
 * Non distribution specific, works on debian, ubuntu, fedora, centos, rhel...
 
+Usage
+=====
+
+Critical on all security type updates
+-------------------------------------
+```
+$ check_pkgkit --no-longoutput --th "metric=security,critical=1..inf"
+Critical - Total: 67, Security: 15, Bug fix: 48, Enhancement: 0, Normal: 4. Critical on security | 'total'=67;;;; 'security'=15;;1..inf;; 'bug fix'=48;;;; 'normal'=4;;;;
+```
+
+Critical on all security type updates and warning on many total updates
+-----------------------------------------------------------------------
+```
+$ python check_pkgkit --no-longoutput --th "metric=security,critical=1..inf" --th "metric=total,warning=40..inf"
+Critical - Total: 67, Security: 15, Bug fix: 48, Enhancement: 0, Normal: 4. Critical on security. Warning on total | 'total'=67;40..inf;;; 'security'=15;;1..inf;; 'bug fix'=48;;;; 'normal'=4;;;;
+```
+
+
+
 Caveats
 =======
 * PackageKit does draw in quite a few packages with it.
