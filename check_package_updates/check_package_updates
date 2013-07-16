@@ -75,6 +75,8 @@ def pkcon_get_updates():
     for line in stdout.split("\n"):
         if not line:
             continue
+	if line.startswith("There are no updates"):
+            continue
         if results_section is False and line == "Results:":
             results_section = True
         elif results_section:
