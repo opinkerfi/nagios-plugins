@@ -3,7 +3,7 @@
 
 Summary:	A Nagios plugin to check operating system updates
 Name:		nagios-okplugin-%{plugin}
-Version:	0.0.3
+Version:	0.0.4
 Release:	1%{?dist}
 License:	GPLv3+
 Group:		Applications/System
@@ -43,6 +43,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/%{plugin}.cfg
 
 %changelog
+* Tue Jul 16 2013 Tomas Edwardsson <tommi@tommi.org> 0.0.4-1
+- new package built with tito
+
 * Tue Jul 16 2013 Tomas Edwardsson <tommi@tommi.org> 0.0.3-1
 - Plugin should conflict with check_yum (tommi@tommi.org)
 - No obsolete (tommi@tommi.org)
