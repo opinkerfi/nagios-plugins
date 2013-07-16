@@ -26,7 +26,7 @@ Critical Security
 
 Critical on all security type updates
 ```
-$ check_pkgkit --no-longoutput --th "metric=security,critical=1..inf"
+$ check_updates --no-longoutput --th "metric=security,critical=1..inf"
 Critical - Total: 67, Security: 15, Bug fix: 48, Enhancement: 0, Normal: 4. Critical on security | 'total'=67;;;; 'security'=15;;1..inf;; 'bug fix'=48;;;; 'normal'=4;;;;
 ```
 
@@ -35,7 +35,7 @@ Total Updates
 
 Critical on all security type updates and warning on many total updates
 ```
-$ python check_pkgkit --no-longoutput --th "metric=security,critical=1..inf" --th "metric=total,warning=40..inf"
+$ python check_updates --no-longoutput --th "metric=security,critical=1..inf" --th "metric=total,warning=40..inf"
 Critical - Total: 67, Security: 15, Bug fix: 48, Enhancement: 0, Normal: 4. Critical on security. Warning on total | 'total'=67;40..inf;;; 'security'=15;;1..inf;; 'bug fix'=48;;;; 'normal'=4;;;;
 ```
 
@@ -44,7 +44,7 @@ Long Output
 With long output (default) you also get the list of packages
 
 ```
-$ python check_pkgkit --th "metric=security,critical=1..inf" --th "metric=total,warning=40..inf"
+$ python check_updates --th "metric=security,critical=1..inf" --th "metric=total,warning=40..inf"
 Critical - Total: 32, Security: 1, Bug fix: 31, Enhancement: 0, Normal: 0. Critical on security | 'total'=32;40..inf;;; 'security'=1;;1..inf;; 'bug fix'=31;;;;
 Security
   python-bugzilla-0.9.0-1.fc18.noarch
@@ -102,7 +102,7 @@ Install
 * Install PackageKit (packagekit in Debian)
 
 ```
-wget https://raw.github.com/opinkerfi/nagios-plugins/master/check_pkgkit/check_pkgkit
+wget https://raw.github.com/opinkerfi/nagios-plugins/master/check_updates/check_updates
 ```
 
 Room for improvement
