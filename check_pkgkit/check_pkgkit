@@ -20,12 +20,11 @@ from pynag.Plugins import PluginHelper, unknown, ok
 
 known_types = ['Enhancement', 'Normal', 'Bug fix', 'Security']
 
+
 def main():
     p = PluginHelper()
     p.parse_arguments()
     p.status(ok)
-    opt = p.options
-
 
     total_updates = 0
     pkg_updates = {}
@@ -37,7 +36,7 @@ def main():
         p.exit()
 
     p.add_summary("Total: %i, " % total_updates +
-                  ", ".join([ "%s: %i" % (x, len(pkg_updates[x]) ) for x in pkg_updates.keys() ]))
+                  ", ".join(["%s: %i" % (x, len(pkg_updates[x])) for x in pkg_updates.keys()]))
     p.add_metric("total", total_updates)
     for update_type in pkg_updates:
         if len(pkg_updates[update_type]):
@@ -49,6 +48,7 @@ def main():
     p.check_all_metrics()
     p.exit()
 
+
 def pkcon_get_updates():
     """
     Fetches all package updates and returns a tuple containing:
@@ -57,7 +57,7 @@ def pkcon_get_updates():
 
     :return: { "Bug fix": [ "pkg-1.0.1", "anthr-pkg-3.1.4" ], "Security": [ "pkg2-2.1.1" ],
     """
-    update_types = { }
+    update_types = {}
 
     stdout = ""
     stderr = ""
@@ -68,7 +68,7 @@ def pkcon_get_updates():
         rc = p.wait() >> 8
     except OSError, e:
         if e.errno == 2:
-            raise Exception("%s - PackageKit not installed?" % (e.strerror))
+            raise Exception("%s - PackageKit not installed?" % e.strerror)
 
     total_updates = 0
     results_section = False
@@ -87,14 +87,15 @@ def pkcon_get_updates():
             total_updates += 1
 
     if rc > 0:
-        raise Exception("pkcon returned non zero return code %i, output:\n%s\nstderr output:\n%s" % (rc, stdout, stderr))
+        raise Exception(
+            "pkcon returned non zero return code %i, output:\n%s\nstderr output:\n%s" % (rc, stdout, stderr))
     if results_section is False:
         raise Exception("pkcon returned no 'Results:' section. Output of pkcon command:\n" + stdout)
 
     for t in known_types:
         if t not in update_types:
             update_types[t] = []
-    return (total_updates, update_types)
+    return total_updates, update_types
 
 
 if __name__ == "__main__":
