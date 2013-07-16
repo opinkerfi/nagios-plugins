@@ -39,9 +39,9 @@ def main():
                   ", ".join(["%s: %i" % (x, len(pkg_updates[x])) for x in pkg_updates.keys()]))
     p.add_metric("total", total_updates)
     for update_type in pkg_updates:
+        p.add_metric(update_type.lower(), len(pkg_updates[update_type]))
         if len(pkg_updates[update_type]):
             p.add_long_output(update_type)
-            p.add_metric(update_type.lower(), len(pkg_updates[update_type]))
             for pkg in pkg_updates[update_type]:
                 p.add_long_output("  %s" % pkg)
 
