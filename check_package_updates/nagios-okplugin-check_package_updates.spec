@@ -37,6 +37,9 @@ sed "s^/usr/lib64^%{_libdir}^g" nrpe.d/%{plugin}.cfg >  %{buildroot}%{_sysconfdi
 %clean
 rm -rf %{buildroot}
 
+%post
+/sbin/service nrpe status &> /dev/null && /sbin/service nrpe reload || :
+
 %files
 %defattr(-,root,root,-)
 %doc README.md
