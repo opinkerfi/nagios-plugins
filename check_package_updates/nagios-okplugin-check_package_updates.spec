@@ -3,7 +3,7 @@
 
 Summary:	A Nagios plugin to check operating system updates
 Name:		nagios-okplugin-%{plugin}
-Version:	0.0.4
+Version:	0.0.5
 Release:	1%{?dist}
 License:	GPLv3+
 Group:		Applications/System
@@ -43,6 +43,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/%{plugin}.cfg
 
 %changelog
+* Tue Jul 16 2013 Tomas Edwardsson <tommi@tommi.org> 0.0.5-1
+- Known types always have a metric, even if 0 (tommi@tommi.org)
+
 * Tue Jul 16 2013 Tomas Edwardsson <tommi@tommi.org> 0.0.4-1
 - new package built with tito
 
