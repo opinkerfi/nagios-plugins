@@ -231,7 +231,7 @@ def run_sssu(system=None, command="ls system full"):
 	error = 0
 	if output.pop(0).strip() != '': error = 1
 	if output.pop(0).strip() != '': error = 1
-	if output.pop(0).strip() != 'SSSU for HP StorageWorks Command View EVA': error = 1
+        if output.pop(0).strip().find('SSSU for HP ') != 0: error = 1
 	if output.pop(0).strip().find('Version:') != 0: error=1
 	if output.pop(0).strip().find('Build:') != 0: error=1
 	if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
