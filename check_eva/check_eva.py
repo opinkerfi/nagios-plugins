@@ -185,7 +185,7 @@ def runCommand(command):
         print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
         if proc.returncode == 127 or proc.returncode == 1: # File not found, lets print path
             path=getenv("PATH")
-            print "Current Path: %s" % (path)
+            print "Current Path: %s" % path
             exit(unknown)
     else:
         return stdout
@@ -202,12 +202,13 @@ def run_sssu(system=None, command="ls system full"):
 
     commands.append(continue_on_error)
     commands.append(login)
-    if system != None:
+    if system is not None:
         commands.append('select SYSTEM "%s"' % system)
     commands.append(command)
 
     commandstring = "sssu "
-    for i in commands: commandstring = commandstring + '"%s" ' % i
+    for i in commands:
+        commandstring += '"%s" ' % i
     global server_side_troubleshooting
     if server_side_troubleshooting == True:
         commandstring = 'cat "debug/%s"' % command
@@ -252,7 +253,6 @@ def run_sssu(system=None, command="ls system full"):
         exit(unknown)
     objects = []
     object = None
-    parent_object = None
     for line in output:
         if len(line) == 0:
             continue
@@ -294,7 +294,7 @@ def run_sssu(system=None, command="ls system full"):
                 object[key] = value
     # Check if we were instructed to check only one eva system
     global check_system
-    if command == "ls system full" and check_system !=  None:
+    if command == "ls system full" and check_system is not None:
         tmp_objects = []
         for i in objects:
             if i['objectname'] == check_system:
@@ -322,7 +322,7 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
     if escape_newlines == True:
         lines = message.split('\n')
         message = '\\n'.join(lines)
-    debug( "do_phone_home = %s" %(do_phone_home) )
+    debug( "do_phone_home = %s" % do_phone_home)
     if do_phone_home == True:
         try:
             if nagios_myhostname is None:
@@ -355,13 +355,13 @@ class ProxiedTransport(xmlrpclib.Transport):
 
 ''' phone_home: Sends results to remote nagios server via python xml-rpc '''
 def phone_home(nagios_server,nagios_port, status, message, hostname=None, servicename=None,system=None):
-    debug("phoning home: %s" % (servicename) )
+    debug("phoning home: %s" % servicename)
     if system is not None:
         servicename = str(servicename) + str(system)
     uri = "http://%s:%s" % (nagios_server,nagios_port)
 
     global proxyserver
-    if proxyserver != None:
+    if proxyserver is not None:
         p = ProxiedTransport()
         p.set_proxy(proxyserver)
         s = xmlrpclib.Server( uri, transport=p )
@@ -383,10 +383,10 @@ def check_systems():
         if operationalstate != 'good':
             nagios_state = max(nagios_state, warning)
         # Lets add to the summary
-        summary = summary + " %s=%s " %(name, operationalstate)
+        summary += " %s=%s " % (name, operationalstate)
         # Collect the performance data
         interesting_perfdata = 'totalstoragespace|usedstoragespace|availablestoragespace'
-        perfdata = perfdata + get_perfdata(i,interesting_perfdata.split('|'), identifier="%s_"% name)
+        perfdata += get_perfdata(i, interesting_perfdata.split('|'), identifier="%s_" % name)
         # Collect extra info for longserviceoutput
         long("%s = %s (%s)\n" % ( i['objectname'], i['operationalstate'], i['operationalstatedetail']) )
         interesting_fields = 'licensestate|systemtype|firmwareversion|nscfwversion|totalstoragespace|usedstoragespace|availablestoragespace'
@@ -401,13 +401,13 @@ def get_perfdata(object, interesting_fields, identifier=""):
     perfdata = ""
     for i in interesting_fields:
         if i == '': continue
-        perfdata = perfdata + "'%s%s'=%s " % (identifier, i, object[i])
+        perfdata += "'%s%s'=%s " % (identifier, i, object[i])
     return perfdata
 
 def add_perfdata(text):
     global perfdata
     text = text.strip()
-    perfdata = perfdata + " %s " % (text)
+    perfdata += " %s " % text
 
 def long(text):
     global longserviceoutput
@@ -415,10 +415,12 @@ def long(text):
 def get_longserviceoutput(object, interesting_fields):
     longserviceoutput = ""
     for i in interesting_fields:
-        longserviceoutput = longserviceoutput + "%s = %s \n" %(i, object[i])
+        longserviceoutput += "%s = %s \n" % (i, object[i])
     return longserviceoutput
 
-def check_operationalstate(object, print_failed_objects=False,namefield='objectname',detailfield='operationalstatedetail',statefield='operationalstate',valid_states=['good']):
+def check_operationalstate(object, print_failed_objects=False,namefield='objectname',detailfield='operationalstatedetail',statefield='operationalstate',valid_states=None):
+    if not valid_states:
+        valid_states=['good']
     if not object.has_key(detailfield): detailfield = statefield
     if not object.has_key(statefield):
         if print_failed_objects:
@@ -433,8 +435,11 @@ def check_operationalstate(object, print_failed_objects=False,namefield='objectn
 
 
 
-def check_generic(command="ls disk full",namefield="objectname", perfdata_fields=[], longserviceoutputfields=[], detailedsummary=False):
-    summary=""
+def check_generic(command="ls disk full",namefield="objectname", perfdata_fields=None, longserviceoutputfields=None, detailedsummary=False):
+    if not perfdata_fields:
+        perfdata_fields = ['good']
+    if not longserviceoutputfields:
+        longserviceoutputfields = []
     global perfdata
     nagios_state = ok
     systems = run_sssu()
@@ -466,7 +471,7 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 
         # Lets add to the summary
         if  i['operationalstate'] != 'good' or detailedsummary == True:
-            summary = summary + " %s/%s=%s " %(systemname,objectname, i['operationalstate'])
+            summary += " %s/%s=%s " % (systemname, objectname, i['operationalstate'])
 
         # Lets get some perfdata
         identifier = "%s/%s_" % (systemname,objectname)
@@ -539,7 +544,6 @@ def check_multiple_objects(object, name):
 
 
 def check_controllers():
-    summary=""
     perfdata=""
     #longserviceoutput="\n"
     nagios_state = ok
@@ -562,19 +566,18 @@ def check_controllers():
 
         # Lets add to the summary
         if not i.has_key('operationalstate'):
-            summary = summary + " %s does not have any operationalstate " % controllername
+            summary += " %s does not have any operationalstate " % controllername
             nagios_state = max( unknown, nagios_state )
             continue
         elif  i['operationalstate'] != 'good':
-            summary = summary + " %s/%s=%s " %(systemname,controllername, i['operationalstate'])
+            summary += " %s/%s=%s " % (systemname, controllername, i['operationalstate'])
 
         # Lets get some perfdata
         interesting_fields = "controllermainmemory"
         identifier = "%s/%s_" % (systemname,controllername)
-        perfdata = perfdata + get_perfdata(i, interesting_fields.split('|'), identifier=identifier)
+        perfdata += get_perfdata(i, interesting_fields.split('|'), identifier=identifier)
 
         # Long Serviceoutput
-        interesting_fields = "operationalstate|operationalstatedetail|firmwareversion|serialnumber"
         #longserviceoutput = longserviceoutput + get_longserviceoutput(i, interesting_fields.split('|') )
         #longserviceoutput = longserviceoutput + "\n%s/%s\n"%(systemname,controllername)
         long( "\n%s/%s = %s (%s)\n"%(systemname,controllername,i['operationalstate'], i['operationalstatedetail']) )
@@ -583,7 +586,6 @@ def check_controllers():
 
 
         controllertemperaturestatus = not_present
-        cache_state = not_present
         fanstate = not_present
         hostportstate = not_present
         sensorstate = ok
@@ -610,7 +612,8 @@ def check_controllers():
             hostportstate = max(hostportstate,ok)
             if hostport['operationalstate'] != 'good':
                 hostportstate = max(warning,hostport_state)
-                long("Hostport %s state = %s\n" % hostport['portname'], hostport['operationalstate'])
+                message = "Hostport %s state = %s\n" % (hostport['portname'], hostport['operationalstate'])
+                long(message)
         if i.has_key('fans'):
             for fan in i['fans']:
                 fanstate = max(fanstate,ok)
