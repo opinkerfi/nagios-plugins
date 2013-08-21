@@ -179,16 +179,16 @@ subitems['port'] = 'fibrechannelports'
 
 '''runCommand: Runs command from the shell prompt. Exit Nagios style if unsuccessful'''
 def runCommand(command):
-  proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE,)
-  stdout, stderr = proc.communicate('through stdin to stdout')
-  if proc.returncode > 0:
-    print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
-    if proc.returncode == 127 or proc.returncode == 1: # File not found, lets print path
-	path=getenv("PATH")
-	print "Current Path: %s" % (path)
-    exit(unknown)
-  else:
-    return stdout
+	proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE,)
+	stdout, stderr = proc.communicate('through stdin to stdout')
+	if proc.returncode > 0:
+		print "Error %s: %s\n command was: '%s'" % (proc.returncode,stderr.strip(),command)
+		if proc.returncode == 127 or proc.returncode == 1: # File not found, lets print path
+			path=getenv("PATH")
+			print "Current Path: %s" % (path)
+			exit(unknown)
+	else:
+		return stdout
 
 
 
@@ -341,16 +341,16 @@ def end(summary,perfdata,longserviceoutput,nagios_state):
 	print message
 	exit(nagios_state)
 class ProxiedTransport(xmlrpclib.Transport):
-    def set_proxy(self, proxy):
-        self.proxy = proxy
-    def make_connection(self, host):
-        self.realhost = host
-        h = httplib.HTTP(self.proxy)
-        return h
-    def send_request(self, connection, handler, request_body):
-        connection.putrequest("POST", 'http://%s%s' % (self.realhost, handler))
-    def send_host(self, connection, host):
-        connection.putheader('Host', self.realhost)
+	def set_proxy(self, proxy):
+		self.proxy = proxy
+	def make_connection(self, host):
+		self.realhost = host
+		h = httplib.HTTP(self.proxy)
+		return h
+	def send_request(self, connection, handler, request_body):
+		connection.putrequest("POST", 'http://%s%s' % (self.realhost, handler))
+	def send_host(self, connection, host):
+		connection.putheader('Host', self.realhost)
 
 
 
@@ -435,30 +435,29 @@ def check_operationalstate(object, print_failed_objects=False,namefield='objectn
 
 
 def check_generic(command="ls disk full",namefield="objectname", perfdata_fields=[], longserviceoutputfields=[], detailedsummary=False):
-        summary=""
+	summary=""
 	global perfdata
-        nagios_state = ok
-        systems = run_sssu()
-        objects = []
+	nagios_state = ok
+	systems = run_sssu()
+	objects = []
 	if command == 'ls system full':
 		objects = systems
 		for i in systems: i['systemname'] = '' #i['objectname']
 	else:
-        	for i in systems:
-        	        result = run_sssu(system=i['objectname'], command=command)
-        	        for x in result:
-        	                x['systemname'] = i['objectname']
-        	                objects.append( x )
+		for i in systems:
+			result = run_sssu(system=i['objectname'], command=command)
+			for x in result:
+				x['systemname'] = i['objectname']
+				objects.append( x )
 	summary = "%s objects found " % len(objects)
-        for i in objects:
-                systemname = i['systemname']
-		
+	for i in objects:
+		systemname = i['systemname']
 		# Some versions of commandview use "objectname" instead of namefield
 		if i.has_key( namefield ):
 			objectname = i[namefield]
 		else:
 			objectname = i['objectname']
-                # Some versions of CV also return garbage objects, luckily it is easy to find these
+		# Some versions of CV also return garbage objects, luckily it is easy to find these
 		if i.has_key('objecttype') and i['objecttype'] == 'typenotset':
 			long("Object %s was skipped because objecttype == typenotset\n" % objectname )
 			continue
@@ -468,10 +467,10 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
                 
 		# Lets add to the summary
 		if  i['operationalstate'] != 'good' or detailedsummary == True:
-                	summary = summary + " %s/%s=%s " %(systemname,objectname, i['operationalstate'])
+			summary = summary + " %s/%s=%s " %(systemname,objectname, i['operationalstate'])
 
-                # Lets get some perfdata
-                identifier = "%s/%s_" % (systemname,objectname)
+		# Lets get some perfdata
+		identifier = "%s/%s_" % (systemname,objectname)
 		i['identifier'] = identifier
 
 
@@ -487,7 +486,7 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 			warninggb= totalstoragespacegb * occupancyalarmlvel / 100
 			add_perfdata( " '%sdiskusage'=%s;%s;%s "% (identifier, usedstoragespacegb,warninggb,totalstoragespacegb) )
 		
-                # Long Serviceoutput
+		# Long Serviceoutput
 		
 		# There are usually to many disks for nagios to display. Skip.
 		if command != "ls disk full":
@@ -510,11 +509,11 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 		nagios_state = max(nagios_state, check_multiple_objects(i, 'communicationbuses'))
 		nagios_state = max(nagios_state, check_multiple_objects(i, 'fibrechannelports'))
 		nagios_state = max(nagios_state, check_multiple_objects(i, 'modules'))
-                for x in longserviceoutputfields:
+		for x in longserviceoutputfields:
 			if i.has_key( x ):
 				long( "- %s = %s\n" % (x, i[x]))
 
-        end(summary,perfdata,longserviceoutput,nagios_state)
+		end(summary,perfdata,longserviceoutput,nagios_state)
 
 def check_multiple_objects(object, name):
 	item_status = not_present
@@ -661,18 +660,17 @@ def set_path():
 		else:
 			path = ":/usr/local/bin"
 	current_path = "%s%s" % (current_path,path)
-        environ['PATH'] = current_path
+	environ['PATH'] = current_path
 set_path()
 
 
 
 if mode == 'check_systems':
-                perfdata_fields = 'totalstoragespace usedstoragespace availablestoragespace'.split()
-                longserviceoutputfields = 'licensestate systemtype firmwareversion nscfwversion totalstoragespace usedstoragespace availablestoragespace'.split()
-		command = "ls system full"
-		namefield="objectname"
-		check_generic(command=command,namefield=namefield,longserviceoutputfields=longserviceoutputfields, perfdata_fields=perfdata_fields)
-		#check_systems
+	perfdata_fields = 'totalstoragespace usedstoragespace availablestoragespace'.split()
+	longserviceoutputfields = 'licensestate systemtype firmwareversion nscfwversion totalstoragespace usedstoragespace availablestoragespace'.split()
+	command = "ls system full"
+	namefield="objectname"
+	check_generic(command=command,namefield=namefield,longserviceoutputfields=longserviceoutputfields, perfdata_fields=perfdata_fields)
 elif mode == 'check_controllers':
 	check_controllers()
 elif mode == 'check_diskgroups':
@@ -684,7 +682,7 @@ elif mode == 'check_diskgroups':
 elif mode == 'check_disks':
 	check_generic(command="ls disk full",namefield="objectname")
 elif mode == 'check_diskshelfs' or mode == 'check_diskshelves':
-        check_generic(command="ls diskshelf full",namefield="diskshelfname",longserviceoutputfields=[], perfdata_fields=[])
+	check_generic(command="ls diskshelf full",namefield="diskshelfname",longserviceoutputfields=[], perfdata_fields=[])
 else:
 	print "* Error: Mode %s not found" % mode
 	print_help()
