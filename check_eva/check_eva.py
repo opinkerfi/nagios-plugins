@@ -493,6 +493,7 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 
         for field in perfdata_fields:
             if field == '': continue
+            print perfdata_fields
             add_perfdata( "'%s%s'=%s " % (identifier, field, i.get(field,None) ))
 
         # Disk group gets a special perfdata treatment
@@ -598,7 +599,7 @@ def check_controllers():
         longoutput( "- serialnumber = %s \n" %(i['serialnumber']))
 
 
-        controllertemperaturestatus = not_present
+        controllertemper1aturestatus = not_present
         fanstate = not_present
         hostportstate = not_present
         sensorstate = ok

@@ -1,0 +1,90 @@
+#!/usr/bin/python
+# Copyright 2013, Tomas Edwardsson
+#
+# This script is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This script is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from pynag.Plugins import PluginHelper, critical, warning, ok
+import requests
+import time
+import signal
+
+
+class TimeoutException(Exception):
+    pass
+
+
+def signal_alarm(signo, frame):
+    raise TimeoutException()
+
+
+def main():
+    plugin = PluginHelper()
+
+    plugin.parser.add_option('-u', help="http uris", dest="uri", action="append")
+    plugin.parse_arguments()
+
+    if not plugin.options.uri:
+        plugin.parser.error("-u (uri) argument is required")
+
+    start_time = time.time()
+    # Assign timeout handler
+    signal.signal(signal.SIGALRM, signal_alarm)
+
+    success = 0
+    failed = 0
+    for uri in plugin.options.uri:
+	if not uri: continue
+        webstate, status = check_website(uri)
+        if webstate:
+            success += 1
+            plugin.add_long_output("%s fetched in %s seconds" % (uri, status))
+            plugin.add_metric(uri, status, uom="s")
+
+        else:
+            failed += 1
+            plugin.add_long_output("%s failed, %s" % (uri, status))
+
+    plugin.add_summary("Checked %i uris, %i failed" % ((failed + success), failed))
+    plugin.status(ok)
+    plugin.add_metric("failed", failed)
+    plugin.add_metric("failed_percentage", (100 * failed / float(failed + success)), uom="%")
+    plugin.add_metric("runtime", time.time() - start_time, uom="s")
+    plugin.check_all_metrics()
+
+    plugin.exit()
+
+
+
+def check_website(uri, timeout=10):
+    """Tries fetching the uri specified
+    returns (False, "Invalid status code <status_code>") on any failure and status code other than 2XX
+    returns (None, "Timeout in %f seconds") on timeout
+    returns (True, time (float)) it took to fetch the website on success"""
+
+    start_time = time.time()
+    signal.alarm(timeout)
+    try:
+        req = requests.get(uri)
+        if str(req.status_code)[0] != "2":
+            return False, "Invalid HTTP status: " + str(req.status_code)
+    except TimeoutException:
+        return None, "Timeout in %.2f seconds" % (time.time() - start_time)
+    except Exception, e:
+        return False, "Error encountered: " + e.message
+    signal.alarm(0)
+    return True, "%.2f" % (time.time() - start_time)
+
+
+if __name__ == "__main__":
+    main()
