@@ -447,7 +447,7 @@ def check_operationalstate(my_object, print_failed_objects=False,namefield='obje
 
 def check_generic(command="ls disk full",namefield="objectname", perfdata_fields=None, longserviceoutputfields=None, detailedsummary=False):
     if not perfdata_fields:
-        perfdata_fields = ['good']
+        perfdata_fields = []
     if not longserviceoutputfields:
         longserviceoutputfields = []
     global perfdata
@@ -493,7 +493,7 @@ def check_generic(command="ls disk full",namefield="objectname", perfdata_fields
 
         for field in perfdata_fields:
             if field == '': continue
-            add_perfdata( "'%s%s'=%s " % (identifier, field, i[field]) )
+            add_perfdata( "'%s%s'=%s " % (identifier, field, i.get(field,None) ))
 
         # Disk group gets a special perfdata treatment
         if command == "ls disk_group full":
@@ -697,10 +697,9 @@ elif mode == 'check_diskgroups':
 elif mode == 'check_disks':
     check_generic(command="ls disk full",namefield="objectname")
 elif mode == 'check_diskshelfs' or mode == 'check_diskshelves':
-    check_generic(command="ls diskshelf full",namefield="diskshelfname",longserviceoutputfields=[], perfdata_fields=[])
+    check_generic(command="ls diskshelf full", namefield="diskshelfname", longserviceoutputfields=[], perfdata_fields=[])
 else:
     print "* Error: Mode %s not found" % mode
     print_help()
     print "* Error: Mode %s not found" % mode
     exit(unknown)
-
