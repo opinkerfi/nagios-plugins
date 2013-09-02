@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+# This script runs whatever command is printed on the command line
+# Usage:
+#   ./check_other -- someotherplugin --arguments-for-the-other-plugin
+#
+# Example:
+#   ./check_other -- check_nrpe -H localhost
+#
+# If you want to provide options to check_other (for example to enforce a threshold:
+# ./check_other --threshold=load1,warn=5..inf -- check_nrpe -H localhost check_load
+
+
+import subprocess
+import sys
+
+from pynag.Plugins import PluginHelper
+from pynag.Utils import runCommand, PluginOutput, PerfData
+
+p = PluginHelper()
+
+p.parser.add_option('--string', dest='string', help='run this command (will be shell expanded, use quotes)')
+p.parse_arguments()
+
+
+# --string was provided
+if p.options.string:
+    return_code, stdout, stderr = runCommand(p.options.string)
+# No --string, and no arguments on the command line
+elif not p.arguments:
+    p.parser.error("You need to provide an external command as an argument. Try:  %s ls" % sys.argv[0])
+# some arguments were provided
+else:
+    try:
+        proc = subprocess.Popen(p.arguments, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,)
+        stdout, stderr = proc.communicate('through stdin to stdout')
+        return_code = proc.returncode
+    except Exception, e:
+        p.set_summary("Failed to execute '%s': %s " % (p.arguments[0], e))
+        p.status(3)
+        p.exit()
+
+p.status(return_code)
+other = PluginOutput(stdout)
+
+p.set_summary(other.summary)
+p.set_long_output(other.long_output)
+p._perfdata = PerfData(other.perfdata)
+
+p.check_all_metrics()
+p.exit()
