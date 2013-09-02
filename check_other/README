@@ -1,0 +1,14 @@
+check_other
+===========
+
+This plugin is designed to execute another plugin that is given as an argument.
+
+Usually you want this to use the perfdata parsing of pynag and you want to alert on specific thresholds in the other plugin.
+
+Usage:
+```
+check_other -- check_nrpe -H localhost -c check_load
+
+# Same as above, but alert on performance metric load1
+check_other --threshold metric=load1,warn=2..inf -- check_nrpe -H localhost -c check_load
+```
