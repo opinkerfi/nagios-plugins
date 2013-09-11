@@ -70,7 +70,7 @@ valid_modes = ("check_systems", "check_controllers", "check_diskgroups",
 
 from sys import exit
 from sys import argv
-from os import getenv, putenv, environ
+from os import getenv, environ
 import subprocess
 import xmlrpclib
 import httplib
@@ -636,7 +636,7 @@ def check_controllers():
         longoutput("- firmwareversion = %s \n" % (i['firmwareversion']))
         longoutput("- serialnumber = %s \n" % (i['serialnumber']))
 
-        controllertemper1aturestatus = not_present
+        controllertemperaturestatus = not_present
         fanstate = not_present
         hostportstate = not_present
         sensorstate = ok
@@ -661,7 +661,7 @@ def check_controllers():
             #long(" %s = %s\n" % (hostport['portname'], hostport['operationalstate']))
             hostportstate = max(hostportstate, ok)
             if hostport['operationalstate'] != 'good':
-                hostportstate = max(warning, hostport_state)
+                hostportstate = max(warning, hostportstate)
                 message = "Hostport %s state = %s\n" % (
                     hostport['portname'], hostport['operationalstate'])
                 longoutput(message)
