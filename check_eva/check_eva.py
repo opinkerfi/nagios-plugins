@@ -42,6 +42,8 @@ do_phone_home = False
 escape_newlines = False
 check_system = None  # By default check all systems
 proxyserver = None
+timeout = 0  # 0 means no timeout
+
 
 # set to true, if you do not have sssu binary handy
 server_side_troubleshooting = False
@@ -71,9 +73,12 @@ valid_modes = ("check_systems", "check_controllers", "check_diskgroups",
 from sys import exit
 from sys import argv
 from os import getenv, environ
+import signal
 import subprocess
 import xmlrpclib
 import httplib
+
+# we need to set socket default timeout in case we are using the phone-home part
 import socket
 socket.setdefaulttimeout(5)
 
@@ -90,6 +95,7 @@ def print_help():
     print " [--path </path/to/sssu>]"
     print " [--mode <mode>] "
     print " [--test]"
+    print " [--timeout <timeout>]"
     print " [--debug]"
     print " [--help]"
     print ""
@@ -125,6 +131,8 @@ while len(arguments) > 0:
         password = arguments.pop(0)
     elif arg == '-T' or arg == '--test':
         testmode = 1
+    elif arg == '--timeout':
+        timeout = arguments.pop(0)
     elif arg == '--path':
         path = arguments.pop(0) + '/'
     elif arg == '-M' or arg == '--mode':
@@ -722,6 +730,11 @@ def set_path():
     environ['PATH'] = current_path
 set_path()
 
+
+# Create an alarm so that plugin can exit properly if timeout occurs
+exit_with_timeout = lambda x, y: error("Timeout of %s seconds exceeded" % timeout)
+signal.signal(signal.SIGALRM, exit_with_timeout)
+signal.alarm(timeout)
 
 if mode == 'check_systems':
     perfdata_fields = 'totalstoragespace usedstoragespace availablestoragespace'.split(
