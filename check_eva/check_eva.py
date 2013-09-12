@@ -132,7 +132,7 @@ while len(arguments) > 0:
     elif arg == '-T' or arg == '--test':
         testmode = 1
     elif arg == '--timeout':
-        timeout = arguments.pop(0)
+        timeout = int(arguments.pop(0))
     elif arg == '--path':
         path = arguments.pop(0) + '/'
     elif arg == '-M' or arg == '--mode':
