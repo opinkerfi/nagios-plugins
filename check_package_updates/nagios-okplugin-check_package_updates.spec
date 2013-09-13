@@ -15,8 +15,6 @@ BuildArch:	noarch
 Requires:	nrpe
 Requires:	pynag
 Requires:	PackageKit
-Obsoletes:	nagios-okplugin-check_yum
-Obsoletes:	nagios-okplugin-check_updates
 
 
 %description
@@ -33,6 +31,8 @@ rm -rf %{buildroot}
 install -D -p -m 0755 %{plugin} %{buildroot}%{_libdir}/nagios/plugins/%{plugin}
 mkdir -p %{buildroot}%{_sysconfdir}/nrpe.d
 sed "s^/usr/lib64^%{_libdir}^g" nrpe.d/%{plugin}.cfg >  %{buildroot}%{_sysconfdir}/nrpe.d/%{plugin}.cfg
+# Temporary fix for selinux
+chcon system_u:object_r:nagios_unconfined_plugin_exec_t:s0 %{plugin} %{buildroot}%{_libdir}/nagios/plugins/%{plugin}
 
 %clean
 rm -rf %{buildroot}
