@@ -17,7 +17,7 @@
 
 from subprocess import Popen, PIPE
 from pynag.Plugins import PluginHelper, unknown, ok
-
+from collections import defaultdict
 known_types = ['Enhancement', 'Normal', 'Bug fix', 'Security']
 
 
@@ -57,7 +57,9 @@ def pkcon_get_updates():
 
     :return: { "Bug fix": [ "pkg-1.0.1", "anthr-pkg-3.1.4" ], "Security": [ "pkg2-2.1.1" ],
     """
-    update_types = {}
+    update_types = defaultdict(list)
+    for t in known_types:
+        update_types[t] = []
 
     stdout = ""
     stderr = ""
@@ -72,7 +74,7 @@ def pkcon_get_updates():
 
     total_updates = 0
     results_section = False
-    for line in stdout.split("\n"):
+    for line in stdout.splitlines():
         if not line:
             continue
         if line.startswith("There are no updates"):
@@ -83,8 +85,6 @@ def pkcon_get_updates():
             update_type = line[:13].strip()
             update_package = line[13:].strip()
 
-            if update_type not in update_types:
-                update_types[update_type] = []
             update_types[update_type].append(update_package)
             total_updates += 1
 
@@ -94,9 +94,6 @@ def pkcon_get_updates():
     if results_section is False:
         raise Exception("pkcon returned no 'Results:' section. Output of pkcon command:\n" + stdout)
 
-    for t in known_types:
-        if t not in update_types:
-            update_types[t] = []
     return total_updates, update_types
 
 
