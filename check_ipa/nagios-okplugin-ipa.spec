@@ -37,6 +37,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %doc README
+%doc grant_anonymous_replication_view.ldif
 %{_libdir}/nagios/plugins/*
 %config(noreplace) %{_sysconfdir}/nrpe.d/check_ipa.cfg
 

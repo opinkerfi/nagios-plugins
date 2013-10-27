@@ -1,0 +1,4 @@
+dn: cn="dc=mr,dc=lan",cn=mapping tree,cn=config
+changetype: modify
+add: aci
+aci: (targetattr=*)(targetfilter="(|(objectclass=nsds5replicationagreement)(objectclass=nsDSWindowsReplicationAgreement))")(version 3.0; aci "permission:Read Replication Agreements"; allow (read, search, compare) groupdn = "ldap:///anyone";)
