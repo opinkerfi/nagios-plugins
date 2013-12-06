@@ -30,7 +30,7 @@ def run_query():
     """ Connect to a remote storwize box and run query  """
     command = "ssh %s@%s %s -delim ':'" % (p.options.user, p.options.hostname, p.options.query)
     if p.options.test:
-        command = "cat tests/%s.txt" % (p.options.query)
+        command = "cat %s.txt" % (p.options.query)
     return_code, stdout, stderr = runCommand(command)
 
     if return_code != 0:
@@ -81,6 +81,15 @@ def check_lsdrive():
             p.add_summary("drive %s is %s" % (row.id, row.status))
 
 
+def check_lsmgrp():
+    p.add_summary("%s groups found" % (len(rows)))
+    p.add_metric("number of groups", len(rows))
+    for row in rows:
+        if row.status != 'online':
+            p.status(critical)
+            p.add_summary("group %s is %s" % (row.name, row.status))
+
+
 def check_lsenclosurebattery():
     p.add_summary("%s batteries found" % (len(rows)))
     p.add_metric("number of batteries", len(rows))
@@ -116,13 +125,27 @@ def check_lsenclosure():
             p.status(critical)
             p.add_summary("enclosure %s is %s" % (row.id, row.status))
 
+
+def check_lsenclosureslot():
+    p.add_summary("%s slots found" % (len(rows)))
+    p.add_metric("number of slots", len(rows))
+    for row in rows:
+        if row.port_1_status != 'online':
+            p.status(critical)
+            p.add_summary("port1 on slot %s:%s is %s" % (row.enclosure_id, row.slot_id, row.port_1_status))
+        if row.port_2_status != 'online':
+            p.status(critical)
+            p.add_summary("port2 on slot %s:%s is %s" % (row.enclosure_id, row.slot_id, row.port_2_status))
+
+
 def check_lsrcrelationship():
-    p.add_summary("%s relationships found" % (len(rows)))
+    p.add_summary("%s cluster relationships found" % (len(rows)))
     p.add_metric("number of relationships", len(rows))
     for row in rows:
-        if row.progress != 'consistent_synchronized':
+        if row.state != 'consistent_synchronized':
             p.status(critical)
-            p.add_summary("%s is %s" % (row.consistency_group_name, row.progress))
+            p.add_summary("%s is %s" % (row.consistency_group_name, row.state))
+
 
 def check_lsvdisk():
     p.add_summary("%s disks found" % (len(rows)))
@@ -138,7 +161,10 @@ def check_lsarray():
     p.add_metric("number of arrays", len(rows))
     for row in rows:
         if row.status != 'online':
-            p.add_summary("array %s is %s." % (row.name, row.status))
+            p.add_summary("array %s is %s." % (row.mdisk_name, row.status))
+            p.status(critical)
+        if row.raid_status != 'online':
+            p.add_summary("array %s has raid status %s." % (row.mdisk_name, row.raid_status))
             p.status(critical)
         # Add some performance metrics
         metric_name = row.mdisk_name + "_capacity"
@@ -155,6 +181,8 @@ elif query == 'lsdrive':
     check_lsdrive()
 elif query == 'lsvdisk':
     check_lsvdisk()
+elif query == 'lsmgrp':
+    check_lsmgrp()
 elif query == 'lsenclosure':
     check_lsenclosure()
 elif query == 'lsenclosurebattery':
@@ -165,6 +193,8 @@ elif query == 'lsenclosurepsu':
     check_lsenclosurepsu()
 elif query == 'lsrcrelationship':
     check_lsrcrelationship()
+elif query == 'lsenclosureslot':
+    check_lsenclosureslot()
 else:
     p.status(unknown)
     p.add_summary("unsupported query: %s. See -L for list of valid queries" % query)
