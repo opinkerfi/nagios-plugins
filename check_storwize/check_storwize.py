@@ -77,6 +77,7 @@ def check_lsdrive():
     p.add_metric("number of drives", len(rows))
     for row in rows:
         if row.status != 'online':
+            p.status(critical)
             p.add_summary("drive %s is %s" % (row.id, row.status))
 
 
@@ -85,14 +86,50 @@ def check_lsenclosurebattery():
     p.add_metric("number of batteries", len(rows))
     for row in rows:
         if row.status != 'online':
+            p.status(critical)
             p.add_summary("battery %s:%s is %s" % (row.enclosure_id, row.battery_id, row.status))
 
+
+def check_lsenclosurecanister():
+    p.add_summary("%s canisters found" % (len(rows)))
+    p.add_metric("number of canisters", len(rows))
+    for row in rows:
+        if row.status != 'online':
+            p.status(critical)
+            p.add_summary("canister %s:%s is %s" % (row.enclosure_id, row.canister_id, row.status))
+
+
+def check_lsenclosurecanister():
+    p.add_summary("%s psu found" % (len(rows)))
+    p.add_metric("number of psu", len(rows))
+    for row in rows:
+        if row.status != 'online':
+            p.status(critical)
+            p.add_summary("psu %s:%s is %s" % (row.enclosure_id, row.PSU_id, row.status))
+
+
+def check_lsenclosure():
+    p.add_summary("%s enclosures found" % (len(rows)))
+    p.add_metric("number of enclosures", len(rows))
+    for row in rows:
+        if row.status != 'online':
+            p.status(critical)
+            p.add_summary("enclosure %s is %s" % (row.id, row.status))
+
+def check_lsenclosure():
+    p.add_summary("%s relationships found" % (len(rows)))
+    p.add_metric("number of relationships", len(rows))
+    for row in rows:
+        if row.progress != 'consistent_synchronized':
+            p.status(critical)
+            p.add_summary("%s is %s" % (row.consistency_group_name, row.status))
 
 def check_lsvdisk():
     p.add_summary("%s disks found" % (len(rows)))
     p.add_metric("number of disks", len(rows))
     for row in rows:
         if row.status != 'online':
+            p.status(critical)
             p.add_summary("disk %s is %s" % (row.name, row.status))
 
 
@@ -118,8 +155,16 @@ elif query == 'lsdrive':
     check_lsdrive()
 elif query == 'lsvdisk':
     check_lsvdisk()
+elif query == 'lsenclosure':
+    check_lsenclosure()
 elif query == 'lsenclosurebattery':
     check_lsenclosurebattery()
+elif query == 'lsenclosurecanister':
+    check_lsenclosurecanister()
+elif query == 'lsenclosurepsu':
+    check_lsenclosurepsu()
+elif query == 'lsrcrelationship':
+    check_lsrcrelationship()
 else:
     p.status(unknown)
     p.add_summary("unsupported query: %s. See -L for list of valid queries" % query)
