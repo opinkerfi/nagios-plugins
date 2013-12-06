@@ -4,10 +4,10 @@ from pynag.Plugins import PluginHelper, ok, warning, critical, unknown
 from pynag.Utils import runCommand
 from collections import namedtuple
 
-valid_queries = "lsarray lsmdiskgrp lsdrive"
+valid_queries = "lsarray lsmdiskgrp lsdrive lsvdisk"
 
 p = PluginHelper()
-p.add_option("-H", "--hostname", help="Hostname or ip address", dest="hostname")
+p.add_option("-H", "--hostname", '-M', help="Hostname or ip address", dest="hostname")
 p.add_option("-U", "--user", help="Log in as this user to storwize", dest="user", default="nagios")
 p.add_option("-Q", "--query", help="Query to send to storwize (see also -L)", dest="query", default="lsarray")
 p.add_option("-L", "--list-queries", help="List of valid queries", dest="list_queries", action="store_true")
@@ -28,7 +28,7 @@ query = p.options.query
 # Connect to remote storwize and run a connect
 def run_query():
     """ Connect to a remote storwize box and run query  """
-    command = "ssh %s@%s %s" % (p.options.user, p.options.hostname, p.options.query)
+    command = "ssh %s@%s %s -delim ':'" % (p.options.user, p.options.hostname, p.options.query)
     if p.options.test:
         command = "cat tests/%s.txt" % (p.options.query)
     return_code, stdout, stderr = runCommand(command)
@@ -48,17 +48,12 @@ def run_query():
     # Parse the output of run query and return a list of "rows"
     lines = stdout.splitlines()
     top_line = lines.pop(0)
-    headers = top_line.split()
+    headers = top_line.split(':')
     Row = namedtuple('Row', ' '.join(headers))
     rows = []
     for i in lines:
         i = i.strip()
-        columns = i.split()
-        # When running lsdrive spare disks do not have same number of columns as other columns.
-        if query == 'lsdrive':
-            columns = columns[0:2] + [None] + columns[2:] + [None, None]
-            if columns[3] == 'spare':
-                columns = columns[0:5] + [None, None, None] + columns[5:]
+        columns = i.split(':')
         row = Row(*columns)
         rows.append(row)
     return rows
@@ -83,7 +78,14 @@ def check_lsdrive():
     for row in rows:
         if row.status != 'online':
             p.add_summary("drive %s is %s" % (row.id, row.status))
-        
+
+
+def check_lsvdisk():
+    p.add_summary("%s disks found" % (len(rows)))
+    p.add_metric("number of disks", len(rows))
+    for row in rows:
+        if row.status != 'online':
+            p.add_summary("disk %s is %s" % (row.name, row.status))
 
 
 def check_lsarray():
@@ -97,26 +99,22 @@ def check_lsarray():
         metric_name = row.mdisk_name + "_capacity"
         p.add_metric(metric_name, value=row.capacity)
 
+# Run our given query, and parse the output
+rows = run_query()
 
-def main():
-    if query == 'lsmdiskgrp':
-        check_lsmdiskgrp()
-    elif query == 'lsarray':
-        check_lsarray()
-    elif query == 'lsdrive':
-        check_lsdrive()
-    else:
-        p.status(unknown)
-        p.add_summary("unsupported query: %s. See -L for list of valid queries" % query)
-        p.exit()
-
-if __name__ == '__main__':
-    try:
-        rows = run_query()
-        main()
-    except KeyError, e:
-        p.status(unknown)
-        p.add_summary("Unhandled exception when running plugin")
-        p.add_long_output(str(e))
-    p.check_all_metrics()
+if query == 'lsmdiskgrp':
+    check_lsmdiskgrp()
+elif query == 'lsarray':
+    check_lsarray()
+elif query == 'lsdrive':
+    check_lsdrive()
+elif query == 'lsvdisk':
+    check_lsvdisk()
+else:
+    p.status(unknown)
+    p.add_summary("unsupported query: %s. See -L for list of valid queries" % query)
     p.exit()
+
+# Check metrics and exit
+p.check_all_metrics()
+p.exit()
