@@ -15,12 +15,12 @@ p.add_option("--test", help="Run this plugin in test mode", dest="test", action=
 
 p.parse_arguments()
 
+if p.options.list_queries is True:
+    p.parser.error("Valid Queries: %s" % valid_queries)
 if not p.options.hostname:
     p.parser.error("Required options -H is missing")
 if p.options.query not in valid_queries.split():
     p.parser.error("%s does not look like a valid query. Use -L for a list of valid queries" % p.options.query)
-if p.options.list_queries is True:
-    p.parser.error("Valid Queries: %s" % valid_queries)
 
 query = p.options.query
 
