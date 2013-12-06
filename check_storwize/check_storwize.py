@@ -99,7 +99,7 @@ def check_lsenclosurecanister():
             p.add_summary("canister %s:%s is %s" % (row.enclosure_id, row.canister_id, row.status))
 
 
-def check_lsenclosurecanister():
+def check_lsenclosurepsu():
     p.add_summary("%s psu found" % (len(rows)))
     p.add_metric("number of psu", len(rows))
     for row in rows:
@@ -116,13 +116,13 @@ def check_lsenclosure():
             p.status(critical)
             p.add_summary("enclosure %s is %s" % (row.id, row.status))
 
-def check_lsenclosure():
+def check_lsrcrelationship():
     p.add_summary("%s relationships found" % (len(rows)))
     p.add_metric("number of relationships", len(rows))
     for row in rows:
         if row.progress != 'consistent_synchronized':
             p.status(critical)
-            p.add_summary("%s is %s" % (row.consistency_group_name, row.status))
+            p.add_summary("%s is %s" % (row.consistency_group_name, row.progress))
 
 def check_lsvdisk():
     p.add_summary("%s disks found" % (len(rows)))
