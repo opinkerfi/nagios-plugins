@@ -4,7 +4,7 @@ from pynag.Plugins import PluginHelper, ok, warning, critical, unknown
 from pynag.Utils import runCommand
 from collections import namedtuple
 
-valid_queries = "lsarray lsmdiskgrp lsdrive lsvdisk"
+valid_queries = "lsarray lsdrive lsenclosurebattery lsenclosurecanister lsenclosurepsu lsenclosureslot lsenclosure lsmdiskgrp lsmdskgrp lsmgrp lsrcrelationship lsvdisk"
 
 p = PluginHelper()
 p.add_option("-H", "--hostname", '-M', help="Hostname or ip address", dest="hostname")
@@ -80,6 +80,14 @@ def check_lsdrive():
             p.add_summary("drive %s is %s" % (row.id, row.status))
 
 
+def check_lsenclosurebattery():
+    p.add_summary("%s batteries found" % (len(rows)))
+    p.add_metric("number of batteries", len(rows))
+    for row in rows:
+        if row.status != 'online':
+            p.add_summary("battery %s:%s is %s" % (row.enclosure_id, row.battery_id, row.status))
+
+
 def check_lsvdisk():
     p.add_summary("%s disks found" % (len(rows)))
     p.add_metric("number of disks", len(rows))
@@ -110,6 +118,8 @@ elif query == 'lsdrive':
     check_lsdrive()
 elif query == 'lsvdisk':
     check_lsvdisk()
+elif query == 'lsenclosurebattery':
+    check_lsenclosurebattery()
 else:
     p.status(unknown)
     p.add_summary("unsupported query: %s. See -L for list of valid queries" % query)
