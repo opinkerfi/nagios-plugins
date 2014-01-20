@@ -24,7 +24,7 @@ Common utilities for okplugins
 
 %install
 rm -rf %{buildroot}
-mkdir -m 0770 -p %{buildroot}%{_sharedstatedir}/%{name}
+mkdir -m 0770 -p %{buildroot}%{_sharedstatedir}/nagios-okplugin
 
 %clean
 rm -rf %{buildroot}
@@ -33,7 +33,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%dir %attr(0770, nrpe, nrpe) %{_sharedstatedir}/%{name}
+%dir %attr(0770, nrpe, nrpe) %{_sharedstatedir}/nagios-okplugin
 
 %changelog
 * Mon Jan 20 2014 Tomas Edwardsson <tommi@tommi.org> 1.2-1
