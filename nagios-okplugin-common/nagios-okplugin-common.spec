@@ -2,7 +2,7 @@
 
 Summary:	A common package for the okplugin suite
 Name:		nagios-okplugin-common
-Version:	1.0
+Version:	1.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -37,5 +37,8 @@ rm -rf %{buildroot}
 %dir %attr(0770, nrpe, nrpe) %{_sharedstatedir}/%{name}
 
 %changelog
+* Mon Jan 20 2014 Tomas Edwardsson <tommi@tommi.org> 1.1-1
+- new package built with tito
+
 * Mon Jan 20 2014 Tomas Edwardsson <tommi@tommi.org> 1.0-1
 - Initial build
