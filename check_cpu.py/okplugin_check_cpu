@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2014, Tomas Edwardsson 
+# Copyright 2014, Tomas Edwardsson
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,9 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 Gathers information on cpu usage on a linux machine
+
+It returns performance data for both the last 5 seconds and from last run.
 """
 
 from pynag.Plugins import PluginHelper, ok, unknown
+import os
+import time
 
 
 def main():
@@ -30,35 +34,67 @@ def main():
 
     pyplug = PluginHelper()
 
+    # Get the statistics from last run
     old_stat = get_saved_stat()
+
+    # Get current state
     stat = get_stat()
 
-    # Find shortest stat
-    if old_stat:
-        stat_length = len(old_stat) > len(stat) and len(old_stat) or len(stat)
-    else:
-        stat_length = len(stat)
-
-    if old_stat:
-        diff = []
-        for pos in range(stat_length):
-            diff.append(stat[pos] - old_stat[pos])
-        averages =  calc_avg(diff)
-    else:
-        averages =  calc_avg(stat)
-
-    for pos in range(stat_length):
-        pyplug.add_metric(label=stat_fields[pos+1], value=averages[pos],
-                          uom="%")
+    # Resample
+    time.sleep(5)
+    stat2 = get_stat()
 
     try:
         save_stat(stat)
     except IOError, err:
         pyplug.exit(unknown, "Unable to save cpu statistics: %s" % err)
 
+
+    # Calculate averages for the last few seconds
+    current_averages = diff_stats(stat2, stat)
+    for pos in range(len(current_averages)):
+        pyplug.add_metric(label=stat_fields[pos+1],
+                          value=current_averages[pos],
+                          uom="%")
+
+    # Calculate averages from last run
+    if old_stat:
+        last_run_avg = diff_stats(old_stat, stat)
+        for pos in range(len(current_averages)):
+            pyplug.add_metric(label=stat_fields[pos+1]+"_avg",
+                              value=last_run_avg[pos],
+                              uom="%")
+
     pyplug.add_status(ok)
-    pyplug.add_summary("CPU load %.2f%%" % (100.0 - averages[3]))
+    pyplug.add_summary("CPU load %.2f%%" % (100.0 - current_averages[3]))
     pyplug.exit()
+
+def diff_stats(older, newer):
+    """Calculates the percentage between two stat arrays"""
+    if older:
+        diff = []
+        for pos in range(len(newer)):
+            diff.append(newer[pos] - older[pos])
+        averages =  calc_avg(diff)
+    else:
+        averages =  calc_avg(newer)
+
+    return averages
+
+
+def remove_stale_state():
+    """Removes the last state file if we have rebooted"""
+
+    try:
+        state_mtime = os.stat("/var/lib/nagios-okplugin/check_cpu").st_mtime
+        boot_time = os.stat("/proc/1").st_mtime
+        if state_mtime < boot_time:
+            print "unlinking"
+            os.unlink("/var/lib/nagios-okplugin/check_cpu")
+    except OSError:
+        return None
+
+    return state_mtime
 
 def calc_avg(stat):
     """Calculates the average of each int in array"""
@@ -75,6 +111,8 @@ def get_stat():
 
 def get_saved_stat():
     """Fetches information about the last run to be able to do averages"""
+
+    remove_stale_state()
     try:
         stat_fh = open("/var/lib/nagios-okplugin/check_cpu")
     except IOError:
