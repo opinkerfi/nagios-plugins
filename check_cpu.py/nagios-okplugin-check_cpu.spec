@@ -24,7 +24,6 @@ Check cpu states on line machines
 
 %install
 rm -rf %{buildroot}
-mkdir -p %{buildroot}%{_sharedstatedir}/nagios-okplugin/%{name}
 install -D -p -m 0755 okplugin_check_cpu %{buildroot}%{_libdir}/nagios/plugins/okplugin_check_cpu
 install -D -p -m 0755 nrpe.d/okplugin_check_cpu.cfg %{buildroot}/etc/nrpe.d/okplugin_check_cpu.cfg
 
@@ -37,7 +36,6 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%dir %attr(0770, nrpe, nrpe) %{_sharedstatedir}/nagios-okplugin/%{name}
 %{_libdir}/nagios/plugins/*
 %{_sysconfdir}/nrpe.d/*
 
