@@ -34,7 +34,10 @@ def main():
     stat = get_stat()
 
     # Find shortest stat
-    stat_length = len(old_stat) > len(stat) and len(old_stat) or len(stat)
+    if old_stat:
+        stat_length = len(old_stat) > len(stat) and len(old_stat) or len(stat)
+    else:
+        stat_length = len(stat)
 
     if old_stat:
         diff = []
