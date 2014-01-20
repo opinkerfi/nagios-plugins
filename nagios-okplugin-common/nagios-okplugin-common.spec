@@ -33,7 +33,6 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/nagios/plugins/*
 %dir %attr(0770, nrpe, nrpe) %{_sharedstatedir}/%{name}
 
 %changelog
