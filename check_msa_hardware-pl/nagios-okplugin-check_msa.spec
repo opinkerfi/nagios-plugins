@@ -4,7 +4,7 @@
 
 Summary:	A Nagios plugin to check status of an MSA (HP P2000) disk array
 Name:		nagios-okplugin-%{plugin}
-Version:	1.0.3
+Version:	1.0.4
 Release:	1%{?dist}
 License:	GPLv3+
 Group:		Applications/System
@@ -46,6 +46,11 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/%{plugin}.cfg
 
 %changelog
+* Thu Jan 30 2014 Pall Sigurdsson <palli@opensource.is> 1.0.4-1
+- README.md added (you@example.com)
+- nrpe.d added to check_msa (you@example.com)
+- rename check_msa_hardware-pl (you@example.com)
+
 * Thu Jan 30 2014 Pall Sigurdsson <palli@opensource.is> 1.0.3-1
 - new package built with tito
 
