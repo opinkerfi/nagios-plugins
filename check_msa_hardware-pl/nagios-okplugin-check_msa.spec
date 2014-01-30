@@ -1,10 +1,10 @@
 %define debug_package %{nil}
-%define plugin check_storwize
+%define plugin check_msa_hardware
 %define packager Pall Sigurdsson <palli@opensource.is>
 
 Summary:	A Nagios plugin to check status of an MSA (HP P2000) disk array
 Name:		nagios-okplugin-%{plugin}
-Version:	1.0.0
+Version:	1.0.2
 Release:	1%{?dist}
 License:	GPLv3+
 Group:		Applications/System
@@ -46,5 +46,11 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/%{plugin}.cfg
 
 %changelog
+* Thu Jan 30 2014 Pall Sigurdsson <palli@opensource.is> 1.0.2-1
+- new package built with tito
+
+* Thu Jan 30 2014 Unknown name 1.0.1-1
+- new package built with tito
+
 * Fri Jan 27 2014 Pall Sigurdsson 1.0.0-1
 - Initial Packaging
