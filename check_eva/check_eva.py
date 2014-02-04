@@ -572,7 +572,7 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
             if i.has_key(x):
                 longoutput("- %s = %s\n" % (x, i[x]))
 
-        end(summary, perfdata, longserviceoutput, nagios_state)
+    end(summary, perfdata, longserviceoutput, nagios_state)
 
 
 def check_multiple_objects(my_object, name):
