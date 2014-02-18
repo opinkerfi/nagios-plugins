@@ -49,7 +49,7 @@ timeout = 0  # 0 means no timeout
 server_side_troubleshooting = False
 
 # No real need to change anything below here
-version = "1.0"
+version = "1.0.1"
 ok = 0
 warning = 1
 critical = 2
@@ -239,15 +239,15 @@ def run_sssu(system=None, command="ls system full"):
     if output.pop(0).strip() != '':
         error = 1
     if output.pop(0).strip() != '':
-        error = 1
-    if output.pop(0).strip() != 'SSSU for HP StorageWorks Command View EVA':
-        error = 1
+        error = 2
+    if output.pop(0).strip().find('SSSU for HP') != 0:
+        error = 3
     if output.pop(0).strip().find('Version:') != 0:
-        error = 1
+        error = 4
     if output.pop(0).strip().find('Build:') != 0:
-        error = 1
+        error = 5
     if output.pop(0).strip().find('NoSystemSelected> ') != 0:
-        error = 1
+        error = 6
     #if output.pop(0).strip() != '': error = 1
     #if output.pop(0).strip().find('NoSystemSelected> ') != 0: error=1
     #if output.pop(0).strip() != '': error = 1
@@ -260,7 +260,7 @@ def run_sssu(system=None, command="ls system full"):
         if i.find('information:') > 0:
             break
     if error > 0:
-        print "Error running the sssu command"
+        print "Error running the sssu command: " + str(error)
         print commandstring
         print str_buffer
         exit(unknown)
@@ -572,7 +572,7 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
             if i.has_key(x):
                 longoutput("- %s = %s\n" % (x, i[x]))
 
-        end(summary, perfdata, longserviceoutput, nagios_state)
+    end(summary, perfdata, longserviceoutput, nagios_state)
 
 
 def check_multiple_objects(my_object, name):
