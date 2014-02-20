@@ -6,7 +6,7 @@
 
 Summary:	A Nagios plugin to check Red Hat Cluster suite (rhel5 and rhel6)
 Name:		nagios-okplugin-%{plugin_name}
-Version:	%{version}
+Version:	1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -45,6 +45,11 @@ rm -rf %{buildroot}
 /etc/nrpe.d/%{plugin_name}.cfg
 
 %changelog
+* Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 1-1
+- Updated rhcs nrpe config as well (tommi@tommi.org)
+- Added check for suspended services -Z (tommi@tommi.org)
+- Fix broken libdir on 64-bit platforms (palli@opensource.is)
+
 * Thu May 24 2012 Pall Sigurdsson <palli@opensource.is> 0.0.4-1
 - version bump of check_rhcs (palli@opensource.is)
 - check_rhcs_fence added for rhel6 compatibility (palli@opensource.is)
