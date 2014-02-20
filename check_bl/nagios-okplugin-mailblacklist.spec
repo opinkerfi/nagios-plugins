@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check SMTP blacklists
 Name:		nagios-okplugin-mailblacklist
-Version:	1.0
+Version:	1.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -38,6 +38,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 1.1-1
+- 
+
 * Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 1.0-1
 - Updated buildarch to noarch (tommi@tommi.org)
 
