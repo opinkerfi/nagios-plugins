@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check CIFS shares
 Name:		nagios-okplugin-cifs
-Version:	1.0
+Version:	1.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -39,6 +39,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 1.1-1
+- Merge github.com:opinkerfi/misc (palli@opensource.is)
+
 * Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 1.0-1
 - version number of scripts bumped (palli@opensource.is)
 - Updates buildarch to noarch (tommi@tommi.org)
