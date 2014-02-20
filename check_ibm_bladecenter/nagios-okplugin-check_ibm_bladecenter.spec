@@ -2,8 +2,8 @@
 
 Summary:	A Nagios plugin to check IBM Bladecenters 
 Name:		nagios-okplugin-check_ibm_bladecenter
-Version:	1.1.2
-Release:	3%{?dist}
+Version:	2
+Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
 URL:		http://opensource.ok.is/trac/wiki/Nagios-OKPlugin-check_ibm_bladecenter
@@ -40,6 +40,11 @@ rm -rf %{buildroot}
 #%config(noreplace) %{_sysconfdir}/nrpe.d/check_bond.cfg
 
 %changelog
+* Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 2-1
+- Merge branch 'master' of github.com:opinkerfi/misc (palli@opensource.is)
+- --exclude option added. Added workaround around false positives
+  (palli@opensource.is)
+
 * Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 1.1.2-3
 - version number of scripts bumped (palli@opensource.is)
 
