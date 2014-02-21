@@ -502,18 +502,17 @@ def check_systemhealth():
     index, severity, description, date = (1, 2, 3, 4)
     # Sometimes chassis delivers warning when absolutely nothing is going on.
     # Lets work around that
-    workaround = {1: '1', 2: 'Good', 3:
-                  'No critical or warning events', 4: 'No timestamp'}
+    workaround = [{1: '1', 2: 'Good', 3: 'No critical or warning events', 4: 'No timestamp'}]
     # Check overall health
     if systemhealthstat == '255':
         nagios_status(ok)
         add_summary("Bladecenter health: OK. ")
+    elif summary.values() == workaround:
+        add_summary("Non-Critical Error (bug in firmware): '%s' " %
+                    workaround[0][description])
+        nagios_status(ok)
+        return
     elif systemhealthstat == "2":
-        if summary.values() == workaround:
-            add_summary("Non-Critical Error: %s " %
-                        workaround[0][description])
-            nagios_status(ok)
-            return
         nagios_status(warning)
         add_summary("Non-Critical Error. ")
     elif systemhealthstat == "4":
