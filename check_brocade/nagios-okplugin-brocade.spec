@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check Brocade devices
 Name:		nagios-okplugin-brocade
-Version:	0.0.4
+Version:	0.0.5
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -36,6 +36,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 0.0.5-1
+- 
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 0.0.4-1
 - new package built with tito
 
