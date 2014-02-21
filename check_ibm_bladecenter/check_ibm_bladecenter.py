@@ -466,7 +466,7 @@ def check_systemhealth():
 	summary = getTable('1.3.6.1.4.1.2.3.51.2.2.7.2.1')
 	index,severity,description,date = (1,2,3,4)
 	# Sometimes chassis delivers warning when absolutely nothing is going on. Lets work around that
-	workaround = [{1: '1', 2: 'Good', 3: 'No critical or warning events', 4: 'No timestamp'}]
+	workaround = {1: '1', 2: 'Good', 3: 'No critical or warning events', 4: 'No timestamp'}
 	# Check overall health
 	if systemhealthstat == '255':
 		nagios_status(ok)
