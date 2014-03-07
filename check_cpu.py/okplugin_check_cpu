@@ -89,7 +89,6 @@ def remove_stale_state():
         state_mtime = os.stat("/var/lib/nagios-okplugin/check_cpu").st_mtime
         boot_time = os.stat("/proc/1").st_mtime
         if state_mtime < boot_time:
-            print "unlinking"
             os.unlink("/var/lib/nagios-okplugin/check_cpu")
     except OSError:
         return None
