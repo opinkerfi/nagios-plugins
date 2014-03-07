@@ -72,12 +72,11 @@ def getLocalNodeState(dom):
     """
     Get the state of the local node
     """
-    hostname = socket.gethostname()
     nodesList = dom.getElementsByTagName('node')
     nodeState = {}
     
     for node in nodesList:
-        if node.attributes['name'].value == hostname:
+        if node.attributes['local'].value == "1":
             nodeState['name'] = node.attributes['name'].value
             nodeState['state'] = node.attributes['state'].value 
             nodeState['rgmanager'] = node.attributes['rgmanager'].value 
@@ -95,7 +94,6 @@ def getServiceState(dom, service):
     Get the state of the named service
     """
     groupList = dom.getElementsByTagName('group')
-    hostname = socket.gethostname()
     serviceState = {}
     for group in groupList:
         if group.attributes['name'].value in (service,"service:"+service,"vm:"+service):
