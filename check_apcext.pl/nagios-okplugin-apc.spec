@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check APC devices
 Name:		nagios-okplugin-apc
-Version:	2.1.0
+Version:	2.1.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -38,6 +38,12 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Thu Mar 20 2014 Tomas Edwardsson <tommi@tommi.org> 2.1.1-1
+- Merge github.com:opinkerfi/misc (palli@opensource.is)
+- Use the right value for the job nbmstemp (tommi@tommi.org)
+- Fixed metric conversion for all mibs (tommi@opensource.is)
+- Added fahrenheit to celsius conversion (tommi@tommi.org)
+
 * Thu Aug 23 2012 Pall Sigurdsson <palli@opensource.is> 2.1.0-1
 - Version number bumped to 2.1.0 (palli@opensource.is)
 - Added noarch buildarch (tommi@tommi.org)
