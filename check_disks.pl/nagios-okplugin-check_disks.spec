@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check disks via NRPE
 Name:		nagios-okplugin-check_disks
-Version:	1.0.5
+Version:	1.0.6
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/check_disks.pl
 
 %changelog
+* Tue Mar 25 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.6-1
+- Bumped version
+
 * Tue Mar 25 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.5-1
 - Added support for inodes (tryggvi@linux.is)
 
