@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to compare time on remote host with localhost
 Name:		nagios-okplugin-check_time
-Version:	1.0.1
+Version:	1.0.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_time.cfg
 
 %changelog
+* Tue Mar 25 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.2-1
+- Bump version
+
 * Mon Mar 12 2012 Pall Sigurdsson <palli@opensource.is> 1.0.1-1
 - new package built with tito
 
