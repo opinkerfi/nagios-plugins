@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to get network statistics over NRPE
 Name:		nagios-okplugin-get_network_stat
-Version:	1.0.0
+Version:	1.0.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -39,5 +39,8 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/okc-get_network_stat
 
 %changelog
+* Wed Apr 02 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.1-1
+- new package built with tito
+
 * Wed Apr  2 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.0-1
 - Initial release
