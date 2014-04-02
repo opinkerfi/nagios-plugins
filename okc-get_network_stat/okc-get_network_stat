@@ -13,7 +13,7 @@ helper.parse_arguments()
 if helper.options.host == "localhost":
     command="cat /proc/net/dev|sed 's/  */ /g'"
 else:
-    command="/usr/lib64/nagios/plugins/check_nrpe -H '%s' -c get_network_interfaces" % helper.options.host
+    command="/usr/lib64/nagios/plugins/check_nrpe -H '%s' -c get_network_interfaces_stat" % helper.options.host
 
 return_code, stdout, stderr = runCommand(command)
 
