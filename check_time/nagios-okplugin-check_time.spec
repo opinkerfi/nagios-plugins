@@ -9,6 +9,7 @@ Group:		Applications/System
 URL:		http://opensource.is/trac/wiki/check_time
 Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_time/releases/nagios-okplugin-check_time-%{version}.tar.gz
 Requires:	nagios-nrpe
+Requires:	bc
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Packager:	Pall Sigurdsson <palli@opensource.is>
 
