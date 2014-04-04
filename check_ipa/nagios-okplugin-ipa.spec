@@ -3,7 +3,7 @@
 
 Summary:	A Nagios plugin to check IPA server status
 Name:		nagios-okplugin-%{plugin}
-Version:	0.0.3
+Version:	0.0.4
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -42,6 +42,12 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/check_ipa.cfg
 
 %changelog
+* Fri Apr 04 2014 Tomas Edwardsson <tommi@tommi.org> 0.0.4-1
+- Renamed to markdown (tommi@tommi.org)
+- Added examples and documentation (tommi@tommi.org)
+- Missing colon (tommi@tommi.org)
+- Added missing OK when things worked out (tommi@tommi.org)
+
 * Thu Apr 25 2013 Tomas Edwardsson <tommi@tommi.org> 0.0.3-1
 - Preliminary testing done, released
 - Various errors in syntax fixed (tommi@tommi.org)
