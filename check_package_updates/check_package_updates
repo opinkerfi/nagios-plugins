@@ -45,6 +45,11 @@ def main():
             for pkg in pkg_updates[update_type]:
                 p.add_long_output("  %s" % pkg)
 
+    for m in known_types:
+        m = m.lower()
+        if not p.get_metric(m):
+            p.add_metric(m, 0)
+
     p.check_all_metrics()
     p.exit()
 
