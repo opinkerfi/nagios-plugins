@@ -4,8 +4,6 @@ from pynag.Plugins import simple as Plugin, WARNING, CRITICAL, UNKNOWN, OK
 from subprocess import Popen, PIPE
 import os
 
-class PluginException(Exception):
-    pass
 
 def main():
     global plugin
@@ -19,7 +17,7 @@ def main():
                    required=False)
     plugin.add_arg("a", "check-all", "Check all LVs", required=False,
                    action="store_true")
-    plugin.activate()    print lvs_output
+    plugin.activate()
 
     lvs = plugin["logical-volume"] and plugin["logical-volume"].split(
         ",") or []
@@ -37,7 +35,13 @@ def main():
     (code, message) = (plugin.check_messages(joinallstr="\n"))
     plugin.nagios_exit(code, message)
 
-def get_lv_list(hostname=None):
+
+def check_mirror(lv_list, vg_list, check_all, hostname):
+    # Ensure the right locale for text parsing
+    """
+
+        :rtype : None
+        """
     # Change lang setting for string consitency
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
@@ -56,18 +60,16 @@ def get_lv_list(hostname=None):
         lvs = Popen(cmd, stdout=PIPE, shell=False, env=env)
         ret = lvs.wait()
         lvs_output = lvs.stdout.readlines()
-    except Exception as error:
-        raise PluginException("Unable to execute lvs: %s" % error)
+    except Exception, e:
+        plugin.nagios_exit(UNKNOWN, "Unable to execute lvs: %s" % (e))
 
     if ret != 0:
-        raise PluginException("Bad return code from lvs command %i" % ret)
-
-    logical_volume = parse_lvs(lvs_output)
-
-def parse_lvs(lvs_output):
+        plugin.nagios_exit(CRITICAL,
+                       "lvs execution failed, return code %i" % (ret))
     all_lvs = []
     all_vgs = []
 
+    # Loop through lvs output
     linenumber = 0
     for l in lvs_output:
         linenumber += 1
@@ -98,16 +100,6 @@ def parse_lvs(lvs_output):
                     vg_name, lv_name, copy_percent))
             else:
                 plugin.add_message(OK, "LV %s/%s functioning" % (vg_name, lv_name))
-
-def check_mirror(lv_list, vg_list, check_all, hostname):
-    # Ensure the right locale for text parsing
-    """
-
-        :rtype : None
-        """
-
-
-    # Loop through lvs output
 
     # Find lvs that were specified in cmd line but were not found via lvs
     for v in vg_list:
