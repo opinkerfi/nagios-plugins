@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check HP Hardware Status 
 Name:		nagios-okplugin-check_hpasm
-Version:	4.1.3
+Version:	4.1.4
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -45,6 +45,9 @@ rm -rf %{buildroot}
 /etc/nrpe.d/check_hpasm.cfg
 
 %changelog
+* Fri Oct 03 2014 Tomas Edwardsson <tommi@tommi.org> 4.1.4-1
+- hpasm invalid nrpe check command name (tommi@tommi.org)
+
 * Thu May 15 2014 Tomas Edwardsson <tommi@tommi.org> 4.1.3-1
 - new package built with tito
 
