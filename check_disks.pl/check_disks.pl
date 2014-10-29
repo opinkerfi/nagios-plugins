@@ -324,7 +324,7 @@ if($opt_f) {
             if(defined($alldisks{$f})) {
                 $checkdisks{$f}=$alldisks{$f};
             }
-        } elsif ($f =~ /([\/\w\d]+)\:(\w+)\:(\w+)/) {
+        } elsif ($f =~ /^(.+?)\:(\w+)\:(\w+)/) {
             if(defined($alldisks{$1})) {
                 $checkdisks{$1}=$alldisks{$1};
                 updateRates($1,$2,$3,$checkdisks{$1}->{somme});
