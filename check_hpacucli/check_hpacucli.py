@@ -274,6 +274,9 @@ def check_logicaldisks():
         ld_status = check(i, 'Status')
         status = max(status, ld_status)
 
+        if i.get('Status') == 'Failed':
+            status = max(status, critical)
+
         mount_point = i['Mount Points']
         add_long("- %s (%s) = %s" % (i['name'], mount_point, state[ld_status]))
     add_summary(". ")
