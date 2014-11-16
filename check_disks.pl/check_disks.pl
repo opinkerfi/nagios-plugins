@@ -251,10 +251,10 @@ if ($ret > 1) {
 #
 
 foreach my $l (@output) {
+    next if ($l =~ m/$opt_R/);
+    next if ($l !~ m/$opt_r/);
+    next if ($l =~ m/$exclude_re/);
     if($l =~ /(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\%\s+([\/\w\d\.-]+)$/) {
-        next if ($l =~ m/$opt_R/);
-        next if ($l !~ m/$opt_r/);
-        next if ($l =~ m/$exclude_re/);
         my ($s,$u,$f,$pu,$d) = ($1,$2,$3,$4,$5);
         $alldisks{$d}->{pused} = $pu;
         $alldisks{$d}->{pfree} = 100-$pu;
@@ -268,10 +268,10 @@ foreach my $l (@output) {
 # This is the output of df.exe on Windows
 #C:\    9097126      6094081      3003045    67% argon-c (ntfs)
     else {
-	if ($l =~ /(\w)\:\\\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\%\s+(.*)$/) {
         next if ($l =~ m/$opt_R/);
         next if ($l !~ m/$opt_r/);
         next if ($l =~ m/$exclude_re/);
+	if ($l =~ /(\w)\:\\\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\%\s+(.*)$/) {
         my ($d,$s,$u,$f,$pu) = ("/$1",$2,$3,$4,$5);
         $alldisks{$d}->{pused} = $pu;
         $alldisks{$d}->{pfree} = 100-$pu;
@@ -324,7 +324,7 @@ if($opt_f) {
             if(defined($alldisks{$f})) {
                 $checkdisks{$f}=$alldisks{$f};
             }
-        } elsif ($f =~ /([\/\w\d]+)\:(\w+)\:(\w+)/) {
+        } elsif ($f =~ /^(.+?)\:(\w+)\:(\w+)/) {
             if(defined($alldisks{$1})) {
                 $checkdisks{$1}=$alldisks{$1};
                 updateRates($1,$2,$3,$checkdisks{$1}->{somme});

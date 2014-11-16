@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check disks via NRPE
 Name:		nagios-okplugin-check_disks
-Version:	1.0.6
+Version:	1.0.7
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -40,6 +40,10 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/check_disks.pl
 
 %changelog
+* Wed Oct 29 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.7-1
+- Fix invalid regex if mountpoint has . in path (tommi@tommi.org)
+- Regex filtering broke disk checks (tommi@tommi.org)
+
 * Tue Mar 25 2014 Tomas Edwardsson <tommi@tommi.org> 1.0.6-1
 - Bumped version
 

@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check APC devices
 Name:		nagios-okplugin-apc
-Version:	2.1.1
+Version:	2.1.2
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -38,6 +38,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Mon Jun 09 2014 Tomas Edwardsson <tommi@tommi.org> 2.1.2-1
+- Disable embedded perl (tommi@tommi.org)
+
 * Thu Mar 20 2014 Tomas Edwardsson <tommi@tommi.org> 2.1.1-1
 - Merge github.com:opinkerfi/misc (palli@opensource.is)
 - Use the right value for the job nbmstemp (tommi@tommi.org)

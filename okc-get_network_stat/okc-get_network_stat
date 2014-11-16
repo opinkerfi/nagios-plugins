@@ -1,0 +1,65 @@
+#!/usr/bin/python
+
+from pynag.Plugins import PluginHelper, ok, warning, critical, unknown
+from pynag.Utils import runCommand
+import re
+
+helper = PluginHelper()
+
+helper.parser.add_option("-H", help="Host to connect to", dest="host", default='localhost')
+
+helper.parse_arguments()
+
+if helper.options.host == "localhost":
+    command="cat /proc/net/dev|sed 's/  */ /g'"
+else:
+    command="/usr/lib64/nagios/plugins/check_nrpe -H '%s' -c get_network_interfaces_stat" % helper.options.host
+
+return_code, stdout, stderr = runCommand(command)
+
+try:
+    receive, transmit = stdout.split("\n")[1].split("|")[1:]
+    receive = receive.split()
+    transmit = transmit.split()
+
+    interfaces = []
+
+    for int_line in stdout.split("\n")[2:]:
+        int_line = int_line.strip()
+        if not int_line:
+            continue
+
+        int_arr = re.split("[: ]+", int_line.strip())
+
+        interface = int_arr.pop(0)
+
+        if interface == "lo" or interface.startswith('sit'):
+            continue
+
+        interfaces.append(interface)
+        for i in range(0, len(receive)):
+            helper.add_metric(
+                label="%s_rx_%s" % (interface, receive[i]),
+                value=int_arr.pop(0),
+                uom="c")
+        for i in range(0, len(transmit)):
+            helper.add_metric(
+                label="%s_tx_%s" % (interface, transmit[i]),
+                value=int_arr.pop(0),
+                uom="c")
+
+    helper.add_summary("Network interfaces %s" % ", ".join(interfaces))
+
+    # Here all metrics will be checked against thresholds that are either
+    # built-in or added via --threshold from the command-line
+    helper.check_all_metrics()
+
+    # Print out plugin information and exit nagios-style
+    helper.exit(ok)
+except Exception, error:
+    helper.status(unknown)
+    helper.add_summary(stdout + stderr)
+    helper.exit(unknown)
+
+# vim: sts=4 expandtab autoindent
+

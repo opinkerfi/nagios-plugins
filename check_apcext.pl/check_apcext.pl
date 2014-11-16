@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# nagios: -epn
 #
 # check_apcext.pl - APC Extra gear monitoring plugin for Nagios
 # 05.02.07 Paul Venezia

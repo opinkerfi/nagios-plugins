@@ -1,1 +1,2 @@
+Defaults:nrpe	!requiretty
 nrpe        ALL=(ALL)       NOPASSWD: /usr/lib64/nagios/plugins/check_hpacucli.py
