@@ -35,7 +35,7 @@ sub f2c ($);
 
 if ($ARGV[0] =~ /(--help|-h|help)/ || !defined$ARGV[0]) {
     &usage;
-    exit 0;
+    exit OK;
 }
 
 my $opts = 's:lmC:H:p:w:c:';
@@ -255,12 +255,12 @@ Detected sensors:
     foreach my $id (sort { $sensor{$a}->{"friendly_name"} cmp $sensor{$b}->{"friendly_name"} } keys %sensor) {
         printf ("\t%-32s %s\n", "\"$sensor{$id}->{friendly_name}\"", "\"$sensor{$id}->{int_name}\"");
     }
-    exit 0;
+    exit OK;
 
 
 } elsif (!$oids{$param}) {
     print "No test parameter specified";
-    exit 3;
+    exit UNKNOWN;
 } else {
     $oid = $oids{$param}->{oid};
     $oidbase = $oids{$param}->{oidbase};
@@ -433,7 +433,7 @@ APC ACRC In-Row
     acrcflrettemp   Fluid return temp
     EO
 
-    exit 3;
+    exit UNKNOWN;
 
 }
 
