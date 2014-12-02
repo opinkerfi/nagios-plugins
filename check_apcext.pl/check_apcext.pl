@@ -4,7 +4,7 @@
 # check_apcext.pl - APC Extra gear monitoring plugin for Nagios
 # 05.02.07 Paul Venezia
 #
-# v0.0.1
+# v0.0.2
 #
 #
 
@@ -18,8 +18,8 @@ sub getmasked_values ($$);
 sub f2c ($);
 
 if ($ARGV[0] =~ /(--help|-h|help)/ || !defined$ARGV[0]) {
-	&usage;
-	exit 0;
+    &usage;
+    exit 0;
 }
 
 my $opts = 's:lmC:H:p:w:c:';
@@ -34,6 +34,14 @@ my $crit = $opt{c};
 my $metric = $opt{m};
 my $list = $opt{l};
 my $sensor_int_name = $opt{s};
+
+my ($session, $error) = Net::SNMP->session(
+    -hostname  => $host,
+    -community => $comm,
+    -version   => 'snmpv2c',                                                                                                                                    
+    -port      => "161"
+);
+
 
 my ($oid, $oidbase, $fval, $unit, $outmsg);
 my $retval = 0;
@@ -197,41 +205,35 @@ my %oids = (
 	);
 
 if ($list) {
-        my ($baseoid, $int_name_id, $value_id) = @_;
+    my ($baseoid, $int_name_id, $value_id) = @_;
 
-	my ($session, $error) = Net::SNMP->session(
-                                           -hostname  => $host,
-                                           -community => $comm,
-                                           -version   => 1,
-               #                                           -translate => [-octetstring => 0x0],
-                                           -port      => "161"
-                                         );
-	my $response = $session->get_table(-baseoid => ".1.3.6.1.4.1.5528.100.2.1.1");
-        my $err = $session->error;
-        if ($err){
-                $retval = 3;
-                $outmsg = "UNKNOWN";
-                $session->close();
-                print "$outmsg $err - SNMP Error connecting to $host\n";
-                exit $retval;
-        }
-	my %sensor;
-	foreach my $k (keys %{$response}) {
-		my ($type, $id) = (split(/\./, $k))[-2,-1];
-		next if ($type != 1 and $type != 4);
-		next if ($id <  2000000000);
-		if ($type == 1) {
-			$sensor{$id}->{"int_name"} = $response->{$k};
-		} else {
-			$sensor{$id}->{"friendly_name"} = $response->{$k};
+    my $response = $session->get_table(-baseoid => ".1.3.6.1.4.1.5528.100.2.1.1");
+  
+    my $err = $session->error;
+  
+    if ($err){
+        $retval = 3;
+        $outmsg = "UNKNOWN";
+        $session->close();
+        print "$outmsg $err - SNMP Error connecting to $host\n";
+        exit $retval;
+    }
+
+    my %sensor;
+    foreach my $key (keys %{$response}) {
+        my ($type, $id) = (split(/\./, $key))[-2,-1];
+        next if ($type != 1 and $type != 4);
+        next if ($id <  2000000000);
+        if ($type == 1) {
+            $sensor{$id}->{"int_name"} = $response->{$key};
+        } else {
+            $sensor{$id}->{"friendly_name"} = $response->{$key};
 		}
 	}
 
 	print <<"	EO";
 Specify a sensor by using the -s and the INTERNAL name of the sensor
-
 Detected sensors:
-
 	EO
 	printf("\t%-32s %s\n", "Friendly Name", "Internal Name");
 	foreach my $id (sort { $sensor{$a}->{"friendly_name"} cmp $sensor{$b}->{"friendly_name"} } keys %sensor) {
@@ -248,34 +250,26 @@ Detected sensors:
 	$oidbase = $oids{$param}->{oidbase};
 }
 
-my ($session, $error) = Net::SNMP->session(
-                                           -hostname  => $host,
-                                           -community => $comm,
-                                           -version   => 1,
-               #                                           -translate => [-octetstring => 0x0],
-                                           -port      => "161"
-                                         );
-
-	
 if ($param eq "rpduamps") {
 #	$param = "RackPDU";
-	my $i;
-	for ($i=1;$i<4;$i++) {
-	  my $phoid = $oid . $i;
-	  my $response = $session->get_request($phoid);
-	my $err = $session->error;
-	if ($err){
-	        $retval = 3;
-		$outmsg = "UNKNOWN";
-		$session->close();
-		print "$outmsg $err - SNMP Error connecting to $host\n";
-		exit $retval;		
+    for (my $i=1;$i<4;$i++) {
+	    my $phoid = $oid . $i;
+        my $response = $session->get_request($phoid);
+        my $err = $session->error;
+        
+    	if ($err){
+            $retval = 3;
+            $outmsg = "UNKNOWN";
+            $session->close();
+            print "$outmsg $err - SNMP Error connecting to $host\n";
+            exit $retval;		
+	    }
+	    
+	    $rpduamps{$i} = $response->{$phoid};
 	}
-	  $rpduamps{$i} = $response->{$phoid};
-	}
-		$session->close;
-		#$crit = ($crit * 10);
-		#$warn = ($warn * 10);
+	$session->close;
+	#$crit = ($crit * 10);
+	#$warn = ($warn * 10);
 
 	$unit = "Amps";
 	foreach my $ph ( sort keys %rpduamps ) {
@@ -306,16 +300,18 @@ if ($param eq "rpduamps") {
 	
 } else {
 	my $val;
+	
 	if ($oid) {
 		my $response = $session->get_request($oid);
 
 		my $err = $session->error;
+		
 		if ($err){
-	        	$retval = 3;
-			$outmsg = "UNKNOWN";
-			$session->close();
-			print "$outmsg $err - SNMP Error connecting to $host\n";
-			exit $retval;		
+            $retval = 3;
+            $outmsg = "UNKNOWN";
+            $session->close();
+            print "$outmsg $err - SNMP Error connecting to $host\n";
+            exit $retval;		
 		}
 	
 	
@@ -324,8 +320,11 @@ if ($param eq "rpduamps") {
 	
 	
 	} else {
-		my $snmpd = getmasked_values($oidbase, { $oids{$param}->{sensor_key} => 'sensor_key',
-						$oids{$param}->{sensor_val} => 'sensor_val' });
+		my $snmpd = getmasked_values(
+		    $oidbase, { 
+		    $oids{$param}->{sensor_key} => 'sensor_key',
+			$oids{$param}->{sensor_val} => 'sensor_val' }
+		);
 
 		if ((keys %{$snmpd}) > 1 && !$sensor_int_name) {
 			print "UNKNOWN - Many sensors found but none specified, see -s and -l\n";
@@ -352,13 +351,14 @@ if ($param eq "rpduamps") {
 		}
 	}
 	if ($param eq "acscstatus" || $param eq "acrcstatus") {
+
 		if ($val == 1) {
 			$fval = "Standby";
-	       		$retval = 1;
+       		$retval = 1;
 			$outmsg = "WARNING";
 		} elsif ($val == 2) {
 			$fval = "On";
-	       		$retval = 0;
+       		$retval = 0;
 			$outmsg = "OK";
 		}
 	} else {
@@ -375,10 +375,10 @@ if ($param eq "rpduamps") {
 		}
 
 		if ($fval > $crit) {
-        		$retval = 2;
+    		$retval = 2;
 			$outmsg = "CRITICAL";
 		} elsif ($fval > $warn) {	
-        		$retval = 1;
+    		$retval = 1;
 			$outmsg = "WARNING";
 		} else {
 			$retval = 0;
@@ -401,16 +401,13 @@ APC NetBotz
 	nbmstemp	NetBotz main sensor temp	| nbmshum 	NetBotz main sensor humidity
 	nbmsairflow	NetBotz main sensor airflow	| nbmsaudio	NetBotz main sensor audio
 	-l 		List connected sensors		| -s sensor	Sensor we want info from
-
 APC Metered Rack PDU
 	rpduamps	Amps on each phase
-
 APC ACSC In-Row
 	acscstatus	System status (on/standby)	| acscload	Cooling load
 	acscoutput	Cooling output			| acscsupair	Supply air
 	acscairflow	Air flow			| acscracktemp	Rack inlet temp
 	acsccondin	Condenser input temp		| acsccondout	Condenser outlet temp 
-
 APC ACRC In-Row
 	acrcstatus	System status (on/standby)	| acrcload	Cooling load
 	acrcoutput	Cooling output			| acrcairflow	Air flow
@@ -433,21 +430,15 @@ sub f2c($) {
 sub getmasked_values ($$) {
 	my ($baseoid, $values) = @_;
 
-	my ($session, $error) = Net::SNMP->session(
-                                           -hostname  => $host,
-                                           -community => $comm,
-                                           -version   => 1,
-                                           -port      => "161"
-                                         );
 	my $response = $session->get_table(-baseoid => $baseoid);
-        my $err = $session->error;
-        if ($err){
-                $retval = 3;
-                $outmsg = "UNKNOWN";
-                $session->close();
-                print "$err - SNMP Error connecting to $host\n";
-                exit $retval;
-        }
+    my $err = $session->error;
+    if ($err){
+        $retval = 3;
+        $outmsg = "UNKNOWN";
+        $session->close();
+        print "$err - SNMP Error connecting to $host\n";
+        exit $retval;
+    }
 
 	my %snmpdata;
 	foreach my $k (keys %{$response}) {
