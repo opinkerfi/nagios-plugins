@@ -6,7 +6,7 @@
 #
 # v0.0.2
 #
-#
+# vim: set expandtab tabstop=4 shiftwidth=4 softtabstop=4:
 
 use Net::SNMP;
 use Getopt::Std;
@@ -55,14 +55,14 @@ my %oids = (
 		'sensor_key' => 5,
 		'sensor_val' => 9,
 		#'cdef' => '$val * 0.1'
-		},
+	},
 	'nbmshum' => {
 		'label' => 'Humidity',
 		'unit'	=> '%',
 		'oidbase' 	=> '.1.3.6.1.4.1.5528.100.4.1.2.1',
 		'sensor_key' => 5,
 		'sensor_val' => 8,
-		},
+	},
 	'nbmsairflow' => {
 		'label' => 'Air Flow',
 		'unit'	=> 'CFM',
@@ -70,7 +70,7 @@ my %oids = (
 		'sensor_val' => 8,
 		'sensor_key' => 5,
 		'mod'	=> 'lt'
-		},
+	},
 	'nbmsaudio' => {
 		'label' => 'Audio Level',
 		'unit'	=> '',
@@ -78,131 +78,131 @@ my %oids = (
 		'sensor_val' => 7,
 		'sensor_key' => 5,
 		'mod'	=> ''
-		},
+	},
 	'rpduamps' => {
 		'label' => 'Power Output',
 		'unit'	=> 'Amps',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acscstatus' => {
 		'label' => 'Status',
 		'unit'	=> '',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.1.0'
-		},
+	},
 	'acscload' => {
 		'label' => 'Cooling Load',
 		'unit'	=> 'kW',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.3.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acscoutput' => {
 		'label' => 'Cooling output',
 		'unit'	=> 'kW',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.2.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acscsupair' => {
 		'label' => 'Supply Air',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.8.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acscretair' => {
 		'label' => 'Return Air',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.10.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acscairflow' => {
 		'label' => 'Airflow',
 		'unit'	=> 'CFM',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.4.0',
-		},
+	},
 	'acscracktemp' => {
 		'label' => 'Rack Inlet Temp',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.6.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acsccondin' => {
 		'label' => 'Cond Inlet Temp',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.30.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acsccondout' => {
 		'label' => 'Cond Outlet Temp',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.4.1.2.28.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcstatus' => {
 		'label' => 'Status',
 		'unit'	=> '',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.1.0'
-		},
+	},
 	'acrcload' => {
 		'label' => 'Cooling Load',
 		'unit'	=> 'kW',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.2.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcoutput' => {
 		'label' => 'Cooling Output',
 		'unit'	=> 'kW',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.3.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcairflow' => {
 		'label' => 'Airflow',
 		'unit'	=> 'CFM',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.4.0'
-		},
+	},
 	'acrcracktemp' => {
 		'label' => 'Rack Inlet Temp',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.6.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcsupair' => {
 		'label' => 'Supply Air',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.8.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcretair' => {
 		'label' => 'Return Air',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.10.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcfanspeed' => {
 		'label' => 'Fan Speed',
 		'unit'	=> '%',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.16.0',
 		'cdef'	=> '$val * .10',
-		},
+	},
 	'acrcfluidflow' => {
 		'label' => 'Fluid Flow',
 		'unit'	=> 'GPM',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.21.0',
 		'cdef'	=> '$val * .10',
 		'mod'	=> 'lt'
-		},
+	},
 	'acrcflenttemp' => {
 		'label' => 'Entering Fluid Temp',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.23.0',
 		'cdef'  => '$val * .10'
-		},
+	},
 	'acrcflrettemp' => {
 		'label' => 'Returning Fluid Temp',
 		'unit'	=> 'degF',
 		'oid' 	=> '.1.3.6.1.4.1.318.1.1.13.3.2.2.2.25.0',
 		'cdef'  => '$val * .10'
-		},
-	);
+	},
+);
 
 if ($list) {
     my ($baseoid, $int_name_id, $value_id) = @_;
@@ -235,7 +235,9 @@ if ($list) {
 Specify a sensor by using the -s and the INTERNAL name of the sensor
 Detected sensors:
 	EO
+	
 	printf("\t%-32s %s\n", "Friendly Name", "Internal Name");
+	
 	foreach my $id (sort { $sensor{$a}->{"friendly_name"} cmp $sensor{$b}->{"friendly_name"} } keys %sensor) {
 		printf ("\t%-32s %s\n", "\"$sensor{$id}->{friendly_name}\"", "\"$sensor{$id}->{int_name}\"");
 	}
@@ -253,7 +255,7 @@ Detected sensors:
 if ($param eq "rpduamps") {
 #	$param = "RackPDU";
     for (my $i=1;$i<4;$i++) {
-	    my $phoid = $oid . $i;
+        my $phoid = $oid . $i;
         my $response = $session->get_request($phoid);
         my $err = $session->error;
         
@@ -265,8 +267,8 @@ if ($param eq "rpduamps") {
             exit $retval;		
 	    }
 	    
-	    $rpduamps{$i} = $response->{$phoid};
-	}
+        $rpduamps{$i} = $response->{$phoid};
+    }
 	$session->close;
 	#$crit = ($crit * 10);
 	#$warn = ($warn * 10);
@@ -322,8 +324,9 @@ if ($param eq "rpduamps") {
 	} else {
 		my $snmpd = getmasked_values(
 		    $oidbase, { 
-		    $oids{$param}->{sensor_key} => 'sensor_key',
-			$oids{$param}->{sensor_val} => 'sensor_val' }
+		        $oids{$param}->{sensor_key} => 'sensor_key',
+			    $oids{$param}->{sensor_val} => 'sensor_val' 
+			}
 		);
 
 		if ((keys %{$snmpd}) > 1 && !$sensor_int_name) {
