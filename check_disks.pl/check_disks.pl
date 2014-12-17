@@ -62,12 +62,12 @@ a connection without password between your nagios server and the checked host
 
     verbose mode : 
     ./check_disks.pl -w 20 -c 10 -v
-    DISK OK [/dev/shm 125.1M (100% free)] [/usr 1.1G (56% free)] [/ 357.2M (84%
+    DISKS OK [/dev/shm 125.1M (100% free)] [/usr 1.1G (56% free)] [/ 357.2M (84%
 free)] [/var 1.5G (73% free)] [/tmp 989.7M (96% free)] [/home 1.8G (90% free)]
 
     ignore some FS : 
     ./check_disks.pl -i /dev/shm,/tmp,/home -v
-    DISK OK [/usr 1.1G (56% free)] [/ 357.2M (84% free)] [/var 1.5G (73% free)]
+    DISKS OK [/usr 1.1G (56% free)] [/ 357.2M (84% free)] [/var 1.5G (73% free)]
 
     Specify different threshold :
     ./check_disks.pl -w 20 -c 10 -f /usr:30:25 -i /dev/shm,/tmp,/home -v
@@ -89,14 +89,15 @@ free)] [/var 1.5G (73% free)] [/tmp 989.7M (96% free)] [/home 1.8G (90% free)]
 not be used.
 
     ./check_disks.pl -C check_disks.cfg -i /dev/shm,/tmp,/home
-    DISK WARNING [/ 357.2M (84% free)]
+    DISKS WARNING [/ 357.2M (84% free)]
 
 =head1 HISTORY
 
     $Log: check_disks.pl,v $
 
-    Revision 1.11 2014/12/17 09:34:00 duboip
-    o Fixed bug with verbose option (was always on)
+    Revision 1.11 2014/12/17 11:07:00 duboip
+    o Fixed bug with verbose option (all mount points were always retured with options off)
+    o Removed extra spaces in output.
 
     Revision 1.10 2013/03/01 14:28:00 tryggvi@ok.is
     o Added support for inodes
@@ -376,26 +377,29 @@ my $ok_disks = "";
 
 # Tests Warn et Crit de tous les fs et creation de l'output
 foreach my $f (keys %checkdisks) {
+    my $notok = 0;
     if($checkdisks{$f}->{pfree} < $checkdisks{$f}->{critical}) {
-	$critical_disks .= " " . $f ;	
+        $critical_disks = join (' ', $critical_disks, $f) ;
         $cmp_crit++;
-    } 
+        $notok = 1;
+    }
     elsif ($checkdisks{$f}->{pfree} < $checkdisks{$f}->{warning}) {
-	$warning_disks .= " " . $f ;	
+        $warning_disks = join (' ', $warning_disks, $f) ;
         $cmp_warn++;
+        $notok = 1;
     } else {
-	$ok_disks .= " " . $f ;	
+        $ok_disks = join (' ', $ok_disks, $f) ;
     }
-    if ($opt_v) {
-    	$output .= "\n"; }
-        $output .= "[$f " . byte2human($checkdisks{$f}->{free}) .
-                          " (" . $checkdisks{$f}->{pfree} . '% free) ;' .
-			   "warning=" . $checkdisks{$f}->{warning} . "% " .
-			   "critical=" . $checkdisks{$f}->{critical} . "% " .
-			'] ' ;
+    if ($notok || $opt_v) {
+        $output .= "[ $f " . byte2human($checkdisks{$f}->{free}) .
+                           " (" . $checkdisks{$f}->{pfree} . '% free) ;' .
+                           "warning=" . $checkdisks{$f}->{warning} . "% " .
+                           "critical=" . $checkdisks{$f}->{critical} . "% " .
+                        '] ' ;
         $output .= "<br>" if ($opt_html);
-	    #$output .= "\n";
+        $output .= "\n" if ($opt_v);
     }
+
     # Donnees de Perfs
     my $perfwarn=$alldisks{$f}->{somme}*((100-$checkdisks{$f}->{warning})/100);
     $perfwarn = sprintf("%0.f",$perfwarn);
@@ -408,7 +412,6 @@ foreach my $f (keys %checkdisks) {
                "0;".
                "$checkdisks{$f}->{somme} ";
 }
-
 if($cmp_crit > 0) {
     $retour='CRITICAL';
 } elsif ($cmp_warn > 0) {
@@ -432,14 +435,18 @@ if (-d $opt_srvperf) {
          my $host = $cfg->get_host_by_address($opt_H) || $opt_H;
 
          open(FP, ">>$opt_srvperf/$host.perfdata") ;
-         print FP time(),"|$host|disk|DISK $retour $output|$perf_data\n" ;
+         print FP time(),"|$host|disk|DISKS $retour $output|$perf_data\n" ;
          close(FP) ;
     }
 }
 
 # Sortie du plugin : sans donnees de perfs qui sont stockes 
 # dans d'autres fichiers
-print "DISK $retour $critical_disks $warning_disks ...  $output | $perf_data\n";
+print "DISKS $retour";
+print "$critical_disks" if ( $critical_disks );
+print "$warning_disks" if ( $warning_disks );
+print "\n$output" if ( $output && ( $retour ne 'OK' || $opt_v ) );
+print "| $perf_data\n";
 exit $EXIT_CODES{$retour};
 
 ##########################################################################
