@@ -4,7 +4,7 @@
 
 =head1 PLUGIN
 
-    check_disk.pl : check disks on Unix servers
+    check_disks.pl : check disks on Unix servers
 
 =head1 ENVIRONNEMENT
 
@@ -19,7 +19,7 @@
 
 =head1 SYNOPSIS
 
-    ./check_disk.pl [-H <host>] [-w <num>] [-c <num>] [-u <user>] [-p <path>] 
+    ./check_disks.pl [-H <host>] [-w <num>] [-c <num>] [-u <user>] [-p <path>] 
                     [-i <dev>] [-f <fs>] [-h] [-C <file>]
      -h | --help     : Display this help
      -w | --warning  : % free space to send warning alert (default 10)
@@ -44,7 +44,7 @@
 
     -w and -c options allow you to ajust default threshold of all checked fs. 
 Theses values can be overwritten with -C option by specifying a configuration 
-file. perldoc ckech_disk.pl for more details.
+file. perldoc check_disks.pl for more details.
     If you want to use the NRPE connexion and check remote hosts, you must create 
 a connection without password between your nagios server and the checked host 
 (key exchange).
@@ -57,28 +57,28 @@ a connection without password between your nagios server and the checked host
     All FS will have the same threshold :
 
     not verbose mode : 
-    ./check_disk.pl -w 20 -c 10
+    ./check_disks.pl -w 20 -c 10
     DISKS OK
 
     verbose mode : 
-    ./check_disk.pl -w 20 -c 10 -v
+    ./check_disks.pl -w 20 -c 10 -v
     DISK OK [/dev/shm 125.1M (100% free)] [/usr 1.1G (56% free)] [/ 357.2M (84%
 free)] [/var 1.5G (73% free)] [/tmp 989.7M (96% free)] [/home 1.8G (90% free)]
 
     ignore some FS : 
-    ./check_disk.pl -i /dev/shm,/tmp,/home -v
+    ./check_disks.pl -i /dev/shm,/tmp,/home -v
     DISK OK [/usr 1.1G (56% free)] [/ 357.2M (84% free)] [/var 1.5G (73% free)]
 
     Specify different threshold :
-    ./check_disk.pl -w 20 -c 10 -f /usr:30:25 -i /dev/shm,/tmp,/home -v
+    ./check_disks.pl -w 20 -c 10 -f /usr:30:25 -i /dev/shm,/tmp,/home -v
 
     Specify another unit (K kilo, M Mega, G Giga, T Tera) : 
-    ./check_disk.pl -w 20 -c 10 -f /usr:400M:300M -i /dev/shm,/tmp,/home 
+    ./check_disks.pl -w 20 -c 10 -f /usr:400M:300M -i /dev/shm,/tmp,/home 
 
 
 =head2 With a FS config file :
 
-    Syntaxe (check_disk.cfg): 
+    Syntaxe (check_disks.cfg): 
 
     #FS     WARN    CRIT
     /       400M    300M
@@ -88,12 +88,15 @@ free)] [/var 1.5G (73% free)] [/tmp 989.7M (96% free)] [/home 1.8G (90% free)]
     FS threshold are read in this configuration file. the -f option will 
 not be used.
 
-    ./check_disk.pl -C check_disk.cfg -i /dev/shm,/tmp,/home
+    ./check_disks.pl -C check_disks.cfg -i /dev/shm,/tmp,/home
     DISK WARNING [/ 357.2M (84% free)]
 
 =head1 HISTORY
 
-    $Log: check_disk.pl,v $
+    $Log: check_disks.pl,v $
+
+    Revision 1.11 2014/12/17 09:34:00 duboip
+    o Fixed bug with verbose option (was always on)
 
     Revision 1.10 2013/03/01 14:28:00 tryggvi@ok.is
     o Added support for inodes
@@ -373,7 +376,6 @@ my $ok_disks = "";
 
 # Tests Warn et Crit de tous les fs et creation de l'output
 foreach my $f (keys %checkdisks) {
-	if ($opt_v) { $output .= "\n"; }
     if($checkdisks{$f}->{pfree} < $checkdisks{$f}->{critical}) {
 	$critical_disks .= " " . $f ;	
         $cmp_crit++;
@@ -384,6 +386,8 @@ foreach my $f (keys %checkdisks) {
     } else {
 	$ok_disks .= " " . $f ;	
     }
+    if ($opt_v) {
+    	$output .= "\n"; }
         $output .= "[$f " . byte2human($checkdisks{$f}->{free}) .
                           " (" . $checkdisks{$f}->{pfree} . '% free) ;' .
 			   "warning=" . $checkdisks{$f}->{warning} . "% " .
@@ -391,7 +395,7 @@ foreach my $f (keys %checkdisks) {
 			'] ' ;
         $output .= "<br>" if ($opt_html);
 	    #$output .= "\n";
-    
+    }
     # Donnees de Perfs
     my $perfwarn=$alldisks{$f}->{somme}*((100-$checkdisks{$f}->{warning})/100);
     $perfwarn = sprintf("%0.f",$perfwarn);
