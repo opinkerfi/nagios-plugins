@@ -81,7 +81,7 @@ check_raid()
 {
         raid_ok=`cat $TEMPFILE |grep -i ok|wc -l`
         raid_warning=`cat $TEMPFILE|grep -i -E  'rebuild|predictive' |wc -l`
-        raid_critical_1=`cat $TEMPFILE|grep -i 'failed|recovery' | wc -l`
+        raid_critical_1=`cat $TEMPFILE|grep -i -E 'failed|recovery' | wc -l`
 
         err_check=`expr $raid_ok + $raid_warning + $raid_critical_1 `
 
