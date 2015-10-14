@@ -133,7 +133,7 @@ case "$1" in
                 exit 0
                 ;;
 	--all)
-		controllers=`sudo -u root hpacucli controller all show | sed 's/.*Slot \([0-9]*\).*/\1/'`
+		controllers=`sudo -u root $HPACUCLI controller all show | sed 's/.*Slot \([0-9]*\).*/\1/'`
 		for i in $controllers ; do sudo -u root $HPACUCLI controller slot=$i pd all show status;done > $TEMPFILE
 		check_raid
 		;;
