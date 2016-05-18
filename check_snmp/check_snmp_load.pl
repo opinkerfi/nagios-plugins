@@ -7,6 +7,7 @@ my $Version='1.12';
 # Licence : GPL - http://www.fsf.org/licenses/gpl.txt
 # Contributors : F. Lacroix and many others !!!
 # 2010-03-13 - Modified by Pall Sigurdsson <palli@ok.is> Added support for cisco asa
+# 2016-05-18 - Modified by Theo Baschak <theodore@ciscodude.net> Fixed Cisco ASA OIDs
 #################################################################
 #
 # Help : ./check_snmp_load.pl -h
@@ -42,9 +43,10 @@ my $cisco_cpu_5s = "1.3.6.1.4.1.9.2.1.56.0"; # Cisco CPU load (5sec %)
 
 # Ciscoasa cpu/load
 # Added by palli@ok.is - 2010-03-13
-my $casa_cpu_5m = ".1.3.6.1.4.1.9.9.109.1.1.1.1.5.1"; # Cisco CPU load (5min %)
-my $casa_cpu_1m = ".1.3.6.1.4.1.9.9.109.1.1.1.1.4.1"; # Cisco CPU load (1min %)
-my $casa_cpu_5s = ".1.3.6.1.4.1.9.9.109.1.1.1.1.3.1"; # Cisco CPU load (5sec %)
+# Modified by theodore@ciscodude.net - 2016-05-18
+my $casa_cpu_5m = ".1.3.6.1.4.1.9.9.109.1.1.1.1.8.1"; # Cisco CPU load (5min %)
+my $casa_cpu_1m = ".1.3.6.1.4.1.9.9.109.1.1.1.1.7.1"; # Cisco CPU load (1min %)
+my $casa_cpu_5s = ".1.3.6.1.4.1.9.9.109.1.1.1.1.10.1"; # Cisco CPU load (5sec %)
 
 # Cisco catalyst cpu/load
 
