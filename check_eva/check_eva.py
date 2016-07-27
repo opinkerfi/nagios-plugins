@@ -27,8 +27,8 @@
 # Disk failures need a Enclosure and Bay location so we can get failed disks easily replaced. Thus
 # changed objectname to this for disk checks.
 # Disk checks: include the comments field for the eva, so we can easily log a ticket with HP (we
-# System check: included comments
 # include eva serial number and DC cabinet location in here).
+# System check: included comments
 # If check_system and system specified; drop system name from perf data fields and add Gb.
 # Turn off perfdata for disk shelves; we don't need to graph how many fc ports it has, etc; these rarely change!
 #
