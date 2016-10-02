@@ -74,17 +74,17 @@ OUTPUT=`$CHECK_COMMAND`
 RESULT=$?
 
 if [ $RESULT -gt 0 ]; then
-	echo "Error - Could not run command $CHECK_COMMAND"
-	echo "Error was: $OUTPUT"
+	echo "UNKNOWN - Could not run command $CHECK_COMMAND"
+        echo "Error was: $OUTPUT"
 	exit 3
 fi
 
 # Parse the output from the command
 if [ "$OUTPUT" == "$STATUS" ]; then
-	echo "ok, selinux status is $OUTPUT"
+	echo "OK - SELinux status is $OUTPUT"
 	exit 0
 else
-	echo "warning, selinux status is $OUTPUT (supposed to be $STATUS)"
+	echo "WARNING - SELinux status is $OUTPUT (supposed to be $STATUS)"
 	exit 1
 fi
 
