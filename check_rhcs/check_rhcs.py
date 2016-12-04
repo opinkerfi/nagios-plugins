@@ -21,6 +21,14 @@
 #</clustat>
 #
 # Frank Clements <frank @ sixthtoe.net>
+#
+# INFO : In RHEL 5, there is a bug in clustat preventing non-root users to use 
+# clustat. See https://bugzilla.redhat.com/show_bug.cgi?id=531273
+# You might need to use setuid on clustat to change this if rgmanager cannot be
+# upgraded to 3.0.7+
+# $chown root:nagios /usr/sbin/clustat
+# $chmod u+s /usr/sbin/clustat
+
 
 import xml.dom.minidom
 import os
