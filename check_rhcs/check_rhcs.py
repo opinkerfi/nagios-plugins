@@ -156,18 +156,18 @@ def main():
         # Now we find the status of the local node from clustat.
         # We only care about the local state since this way we can tie the alert to the host.
         nodeStates = getLocalNodeState(dom) 
-		if nodeStates == {}:
+        if nodeStates == {}:
             print "UNKNOWN: Local node informations couldn't be found!"
-			sys.exit(3)
-			if nodeStates['state'] != "1":
-				print "WARNING: Local node state is offline!"
-				sys.exit(1)
-			elif nodeStates['rgmanager'] != "1":
-				print "CRITICAL: RGManager service not running on " + nodeStates['name'] + "!"
-				sys.exit(2) 
-			else:
-				print "OK: Cluster node " + nodeStates['name'] + " is online and cluster is quorate."
-				sys.exit(0)
+            sys.exit(3)
+            if nodeStates['state'] != "1":
+                print "WARNING: Local node state is offline!"
+                sys.exit(1)
+            elif nodeStates['rgmanager'] != "1":
+                print "CRITICAL: RGManager service not running on " + nodeStates['name'] + "!"
+                sys.exit(2) 
+            else:
+                print "OK: Cluster node " + nodeStates['name'] + " is online and cluster is quorate."
+                sys.exit(0)
 
     elif typeCheck == 'service':
         serviceState = getServiceState(dom, serviceName)
