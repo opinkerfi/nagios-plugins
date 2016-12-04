@@ -110,6 +110,7 @@ def main():
         sys.exit(2)
 
     check_suspend = False
+    typeCheck = None
     for o, a in opts:
         if o in ('-c', '--cluster'):
             typeCheck = 'cluster'
@@ -121,6 +122,10 @@ def main():
         if o in ('-h', '--help'):
             usage()
             sys.exit()
+
+    if typeCheck == None:
+        usage()
+        sys.exit()
 
     try:
         clustatOutput = os.popen('/usr/sbin/clustat -fx')
