@@ -6,7 +6,7 @@ Version:	1.0.0
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
-URL:		http://opensource.is/trac/wiki/check_firewall_active
+URL:		https://github.com/opinkerfi/nagios-plugins/issues
 Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_firewall_active/releases/nagios-okplugin-check_firewall_active-%{version}.tar.gz
 Requires:	nagios-nrpe
 Requires:	iptables
