@@ -1,2 +1,2 @@
 Defaults:nrpe	!requiretty
-nrpe		ALL = (root) NOPASSWD: /usr/lib/nagios/plugins/check_firewall_active.sh
+nrpe		ALL = (root) NOPASSWD: /usr/lib64/nagios/plugins/check_firewall_active.sh
