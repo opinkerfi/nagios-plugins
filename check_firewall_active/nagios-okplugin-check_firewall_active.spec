@@ -28,7 +28,7 @@ A Nagios plugin to check if iptables are actually enforcing rules
 
 %install
 rm -rf %{buildroot}
-install -D -p -m 0755 check_time.sh %{buildroot}%{_libdir}/nagios/plugins/check_firewall_active.sh
+install -D -p -m 0755 check_firewall_active.sh %{buildroot}%{_libdir}/nagios/plugins/check_firewall_active.sh
 install -D -p -m 0755 nrpe.d/check_firewall_active.cfg %{buildroot}/etc/nrpe.d/check_firewall_active.cfg
 install -D -p -m 0644 sudoers.d/check_firewall_active %{buildroot}/etc/sudoers.d/check_firewall_active
 
@@ -41,6 +41,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 /etc/nrpe.d/check_firewall_active.cfg
 /etc/sudoers.d/check_firewall_active
+
+%post
+restorecon -v %{_libdir}/nagios/plugins/check_firewall_active.sh /etc/nrpe.d/check_firewall_active.cfg /etc/sudoers.d/check_firewall_active
 
 %changelog
 * Thu Dec 20 2016  Richard Allen <ra@ok.is> 0.1-1
