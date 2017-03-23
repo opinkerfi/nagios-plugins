@@ -112,7 +112,7 @@ if [ $? != 0 ]; then
 		exit $STATE_UNKNOWN
 	fi
 
-	echo "MULTIPATH: $(MULTIPATH -ll 2>&1)"
+	echo "MULTIPATH: $($MULTIPATH -ll 2>&1)"
 	exit $STATE_UNKNOWN
 fi
 
