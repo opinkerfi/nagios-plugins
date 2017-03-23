@@ -48,9 +48,9 @@ print_help() {
 
 	echo "Add this to your sudoers file by running visudo to add access:"
 	if [ -r /proc/modules ]; then
-		echo "Cmnd_Alias MULTIPATH=$MULTIPATH -l"
+		echo "Cmnd_Alias MULTIPATH=$MULTIPATH -ll"
 	else
-		echo "Cmnd_Alias MULTIPATH=$MULTIPATH -l, $SUDO"
+		echo "Cmnd_Alias MULTIPATH=$MULTIPATH -ll, $SUDO"
 	fi
 	echo "nagios  ALL= NOPASSWD: MULTIPATH"
 	echo "The user nagios may very well be nobody or someone else depending on your configuration"
@@ -98,7 +98,7 @@ if [ $(id -un) != "root" ]; then
 	fi
 fi
 
-OUTPUT=$($MULTIPATH -l 2>/dev/null)
+OUTPUT=$($MULTIPATH -ll 2>/dev/null)
 if [ $? != 0 ]; then
 	# Failed. grab more info why
 	if [ $(id -un) != "root" ] && [ `$SUDO -l | grep -c multipath` -eq 0 ]; then
@@ -112,7 +112,7 @@ if [ $? != 0 ]; then
 		exit $STATE_UNKNOWN
 	fi
 
-	echo "MULTIPATH: $(MULTIPATH -l 2>&1)"
+	echo "MULTIPATH: $(MULTIPATH -ll 2>&1)"
 	exit $STATE_UNKNOWN
 fi
 
@@ -137,6 +137,7 @@ if [ "$NUMPATHS" ]; then
    	/^ \\/ {targets++; next} # count targets (lenny)
    	/[0-9]+:[0-9]+:[0-9]+:[0-9]+/ { 
    		if (/active undef running/) { targets++ }	# count targets (squeeze)
+   		if (/active ready running/) { targets++ }	# count targets (RHEL6)
    		next
    	} 
 	{
