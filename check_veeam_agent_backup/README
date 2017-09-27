@@ -1,0 +1,3 @@
+check_veeam_agent_backup
+
+Simple Nagios plugin that checks the status of veeam agent backup for last 24 hours
