@@ -37,7 +37,7 @@ services:
 install: true
 
 script:
-  - docker run -v ${PWD}:/check_firewall_active -v ${PWD}:/output:Z -e "SRPM_ONLY=1" ${DOCKER_IMAGE}:${OS_TYPE}-${OS_VERSION}
+  - docker run -v ${PWD}:/sources -v ${PWD}:/output:Z -e "SRPM_ONLY=1" ${DOCKER_IMAGE}:${OS_TYPE}-${OS_VERSION}
 
 after_success:
   - pip install copr-cli simplejson
