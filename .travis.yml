@@ -1,20 +1,46 @@
+#sudo: required
+#env:
+#  matrix:
+#  - OS_TYPE=centos OS_VERSION=6
+#  - OS_TYPE=centos OS_VERSION=7
+#
+#services:
+#  - docker
+#
+#before_install:
+#  - sudo apt-get update
+#  - echo 'DOCKER_OPTS="-H tcp://127.0.0.1:2375 -H unix:///var/run/docker.sock -s devicemapper"' | sudo tee /etc/default/docker > /dev/null
+#  - sudo service docker restart
+#  - sleep 5
+#  - sudo docker pull centos:centos${OS_VERSION}
+#
+#
+#script:
+# # Run tests in Container
+# - tests/setup_tests.sh ${OS_VERSION}
+#
 sudo: required
+language: python
+
 env:
+  global:
+    - DOCKER_IMAGE=alectolytic/rpmbuilder
+    - COPR_REPOSITORY=nagios-plugins
+    - OS_ARCH=x86_64
   matrix:
-  - OS_TYPE=centos OS_VERSION=6
-  - OS_TYPE=centos OS_VERSION=7
+    #    - OS_TYPE=fedora OS_DIST=fedora OS_VERSION=24
+    - OS_TYPE=centos OS_DIST=epel OS_VERSION=7
 
 services:
   - docker
 
-before_install:
-  - sudo apt-get update
-  - echo 'DOCKER_OPTS="-H tcp://127.0.0.1:2375 -H unix:///var/run/docker.sock -s devicemapper"' | sudo tee /etc/default/docker > /dev/null
-  - sudo service docker restart
-  - sleep 5
-  - sudo docker pull centos:centos${OS_VERSION}
-
+install: true
 
 script:
- # Run tests in Container
- - tests/setup_tests.sh ${OS_VERSION}
+  - docker run -v ${PWD}:/check_firewall_active -v ${PWD}:/output:Z -e "SRPM_ONLY=1" ${DOCKER_IMAGE}:${OS_TYPE}-${OS_VERSION}
+
+after_success:
+  - pip install copr-cli simplejson
+    #- openssl aes-256-cbc -K $<ENCRYPTED KEY VAR> -iv $<ENCRYPTED KEY VAR> -in .copr.enc -out .copr -d
+  - openssl aes-256-cbc -K $encrypted_f965aefb5778_key -iv $encrypted_f965aefb5778_iv -in .copr.enc -out .copr -d
+  - if [ ! -z "${TRAVIS_TAG}" ]; then copr-cli --config .copr build -r ${OS_DIST}-${OS_VERSION}-${OS_ARCH} ${COPR_REPOSITORY} *.src.rpm; fi
