@@ -3,7 +3,7 @@
 Summary:	A Nagios plugin to check SMTP blacklists
 Name:		nagios-okplugin-mailblacklist
 Version:	1.1
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPLv2+
 Group:		Applications/System
 URL:		http://opensource.ok.is/trac/wiki/Nagios-OKPlugin-MailBlacklist
@@ -22,6 +22,8 @@ Checks DNS Blacklists for existance of hosts
 %setup -q
 perl -pi -e "s|/usr/lib|%{_libdir}|g" check_bl
 
+%global __requires_exclude %{?__requires_exclude:%__requires_exclude}|}^perl\\(utils\\)
+
 %build
 
 
@@ -38,6 +40,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Fri May 04 2018 Richard Allen <ra@ok.is> 1.1-2
+- Filter out perl-utils dependancy
+
 * Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 1.1-1
 - 
 
