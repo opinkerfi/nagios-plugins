@@ -3,14 +3,14 @@
 Summary:	A Nagios plugin to check Brocade devices
 Name:		nagios-okplugin-brocade
 Version:	0.0.5
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPLv2+
 Group:		Applications/System
 URL:		http://opensource.ok.is/trac/wiki/Nagios-OKPlugin-Brocade
 Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_brocade/releases/nagios-okplugin-brocade-%{version}.tar.gz
 Requires:	perl-Nagios-Plugin
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Packager:	Tomas Edwardsson <tommi@ok.is>
+Packager:	Gardar Thorsteinsson <gardar@ok.is>
 
 
 %description
@@ -19,6 +19,8 @@ Checks Brocade devices
 %prep
 %setup -q
 perl -pi -e "s|/usr/lib|%{_libdir}|g" check_brocade_env
+
+%global __requires_exclude %{?__requires_exclude:%__requires_exclude}|}^perl\\(utils\\)
 
 %build
 
@@ -36,6 +38,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Fri May 09 2018 Gardar Thorsteinsson <gardar@ok.is> 0.0.5-2
+- filter out perl-utils dep
+
 * Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 0.0.5-1
 - 
 

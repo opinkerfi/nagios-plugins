@@ -3,14 +3,14 @@
 Summary:	Various nagios plugins to check cpu,memory,interfaces via SNMP
 Name:		nagios-okplugin-check_snmp
 Version:	2
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPLv2+
 Group:		Applications/System
 URL:		http://opensource.is/trac/wiki/check_snmp
 Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_snmp/releases/nagios-okplugin-check_snmp-%{version}.tar.gz
 Requires:	perl-Net-SNMP
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Packager:	Pall Sigurdsson <palli@opensource.is>
+Packager:	Gardar Thorsteinsson <gardar@ok.is>
 
 
 %description
@@ -19,6 +19,8 @@ Various nagios plugins to check cpu,memory,interfaces via SNMP
 %prep
 %setup -q
 #perl -pi -e "s|/usr/lib|%{_libdir}|g" nrpe.d/check_hpacucli.cfg
+
+%global __requires_exclude %{?__requires_exclude:%__requires_exclude}|}^perl\\(utils\\)
 
 %build
 
@@ -45,6 +47,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Fri May 09 2018 Gardar Thorsteinsson <gardar@ok.is> 2-2
+- Filter out perl-utils dep
+
 * Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 2-1
 - make sure nagios does not run us in embedded perl (palli@opensource.is)
 

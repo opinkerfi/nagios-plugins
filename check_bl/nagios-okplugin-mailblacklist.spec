@@ -11,7 +11,7 @@ Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_bl/releases/%
 Requires:	nagios-plugins
 Requires:	nagios-plugins-perl
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Packager:	Tomas Edwardsson <tommi@ok.is>
+Packager:	Gardar Thorsteinsson <gardar@ok.is>
 BuildArch:	noarch
 
 
