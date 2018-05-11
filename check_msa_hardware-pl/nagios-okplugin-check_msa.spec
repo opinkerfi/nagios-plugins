@@ -1,11 +1,11 @@
 %define debug_package %{nil}
 %define plugin check_msa_hardware
-%define packager Pall Sigurdsson <palli@opensource.is>
+%define packager Gardar Thorsteinsson <gardar@ok.is>
 
 Summary:	A Nagios plugin to check status of an MSA (HP P2000) disk array
 Name:		nagios-okplugin-%{plugin}
 Version:	1.0.5
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPLv3+
 Group:		Applications/System
 URL:		https://github.com/opinkerfi/nagios-plugins/tree/master/%{plugin}
@@ -20,6 +20,8 @@ Requires:	pynag
 Checks status of a remote MSA disk array, also known as HP P2000 
 %prep
 %setup -q
+
+%global __requires_exclude %{?__requires_exclude:%__requires_exclude}|}^perl\\(utils\\)
 
 %build
 
@@ -46,6 +48,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/nrpe.d/%{plugin}.cfg
 
 %changelog
+* Fri May 09 2018 Gardar Thorsteinsson <gardar@ok.is> 1.0.5-2
+- Filter out perl-utils dep
+
 * Thu Jan 30 2014 Pall Sigurdsson <palli@opensource.is> 1.0.5-1
 - 
 

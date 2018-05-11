@@ -3,7 +3,7 @@
 Summary:	A Nagios plugin to check CIFS shares
 Name:		nagios-okplugin-cifs
 Version:	1.1
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPLv2+
 Group:		Applications/System
 URL:		http://opensource.ok.is/trac/wiki/Nagios-OKPlugin-Brocade
@@ -11,7 +11,7 @@ Source0:	http://opensource.ok.is/trac/browser/nagios-plugins/check_cifs/releases
 Requires:	perl-Nagios-Plugin
 Requires:	samba-client, krb5-workstation
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Packager:	Tomas Edwardsson <tommi@ok.is>
+Packager: Gardar Thorsteinsson <gardar@ok.is>	
 BuildArch:	noarch
 
 
@@ -22,6 +22,8 @@ NTML authentication
 %prep
 %setup -q
 perl -pi -e "s|/usr/lib|%{_libdir}|g" check_cifs
+
+%global __requires_exclude %{?__requires_exclude:%__requires_exclude}|}^perl\\(utils\\)
 
 %build
 
@@ -39,6 +41,9 @@ rm -rf %{buildroot}
 %{_libdir}/nagios/plugins/*
 
 %changelog
+* Fri May 09 2018 Gardar Thorsteinsson <gardar@ok.is> 1.1-2
+- Filter out perl-utils dep
+
 * Thu Feb 20 2014 Pall Sigurdsson <palli@opensource.is> 1.1-1
 - Merge github.com:opinkerfi/misc (palli@opensource.is)
 
