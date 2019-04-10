@@ -46,9 +46,9 @@ except Exception, e:
 # Loop through replication agreements
 for rhost in replication:
     plugin.add_summary("Replica %s Status: %s" % (rhost[1]['nsDS5ReplicaHost'][0], rhost[1]['nsds5replicaLastUpdateStatus'][0]))
-    if rhost[1]['nsds5replicaLastUpdateStatus'][0][:2] == "0 ":
+    if rhost[1]['nsds5replicaLastUpdateStatus'][0][7:8] == "0":
         plugin.status(ok)
-    elif rhost[1]['nsds5replicaLastUpdateStatus'][0][:2] == "1 ":
+    elif rhost[1]['nsds5replicaLastUpdateStatus'][0][7:8] == "1":
         # Busy Replica is not an error, its "unknown" (but its "ok" for now)
         plugin.status(ok)
     else:
