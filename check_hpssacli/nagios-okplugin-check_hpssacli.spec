@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check HP Array with hpssacli
 Name:		nagios-okplugin-check_hpssacli
-Version:	1
+Version:	1.1
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
