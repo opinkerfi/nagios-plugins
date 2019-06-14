@@ -136,6 +136,7 @@ def set_path(path):
         if path == '':
             path = ";C:\Program Files\hp\hpssacli\Bin"
             path = path + ";C:\Program Files (x86)\hp\hpssacli\Bin"
+            path = path + ";C:\Program Files\Smart Storage Administrator\ssacli\bin"
         else:
             path = ';' + path
     else:  # Unix/Linux, etc
