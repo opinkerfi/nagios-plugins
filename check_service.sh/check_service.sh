@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -o pipefail
 
 # Author: Jon Schipp
 # 2015-03-09 [Pascal Hegy] - Add sudo for linux
