@@ -1,0 +1,2 @@
+Defaults:nrpe   !requiretty
+nrpe            ALL = (xroad) NOPASSWD: /usr/bin/signer-console list-tokens, /usr/lib64/nagios/plugins/check_xroad_token.sh
