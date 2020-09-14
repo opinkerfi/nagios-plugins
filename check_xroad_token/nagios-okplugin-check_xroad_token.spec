@@ -2,7 +2,7 @@
 
 Summary:	A Nagios plugin to check status of XROAD soft-token
 Name:		nagios-okplugin-check_xroad_token
-Version:	1.0.1
+Version:	1.0.3
 Release:	1%{?dist}
 License:	GPLv2+
 Group:		Applications/System
@@ -45,5 +45,11 @@ rm -rf %{buildroot}
 restorecon -v %{_libdir}/nagios/plugins/check_xroad_token.sh /etc/nrpe.d/check_xroad_token.cfg /etc/sudoers.d/check_xroad_token
 
 %changelog
+* Mon Sep 14 2020 Your Name <you@example.com> 1.0.3-1
+- new package built with tito
+
+* Mon Sep 14 2020 Your Name <you@example.com>
+- new package built with tito
+
 * Fri Sep 11 2020  Gardar Thorsteinsson <gardart@gmail.com> 1.0.1-1
 - Initial packaging
