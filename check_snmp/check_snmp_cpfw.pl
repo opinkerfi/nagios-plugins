@@ -21,8 +21,8 @@ use Getopt::Long;
 
 # Nagios specific
 
-#use lib "/usr/local/nagios/libexec";
-use lib "/usr/lib/nagios/plugins";
+use lib "/usr/local/nagios/libexec";
+#use lib "/usr/lib/nagios/plugins"; # use in ubugtu
 use utils qw(%ERRORS $TIMEOUT);
 #my $TIMEOUT = 15;
 #my %ERRORS=('OK'=>0,'WARNING'=>1,'CRITICAL'=>2,'UNKNOWN'=>3,'DEPENDENT'=>4);
