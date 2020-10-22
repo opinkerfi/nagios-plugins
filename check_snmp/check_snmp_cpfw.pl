@@ -5,6 +5,9 @@
 # Author  : Patrick Proy (patrick at proy.org)
 # Help : http://nagios.manubulon.com
 # Licence : GPL - http://www.fsf.org/licenses/gpl.txt
+# Patch 1.2.1a
+# Author : monitoreo.osi@uchile.cl
+# Desc: add to things at fw checks, connectionrate & connection peak
 # TODO : 
 # - check sync method
 #################################################################
@@ -18,7 +21,8 @@ use Getopt::Long;
 
 # Nagios specific
 
-use lib "/usr/local/nagios/libexec";
+#use lib "/usr/local/nagios/libexec";
+use lib "/usr/lib/nagios/plugins";
 use utils qw(%ERRORS $TIMEOUT);
 #my $TIMEOUT = 15;
 #my %ERRORS=('OK'=>0,'WARNING'=>1,'CRITICAL'=>2,'UNKNOWN'=>3,'DEPENDENT'=>4);
@@ -26,11 +30,12 @@ use utils qw(%ERRORS $TIMEOUT);
 ########### SNMP Datas ########### 
 
 ###### FW data
-my $policy_state	= "1.3.6.1.4.1.2620.1.1.1.0"; # "Installed"
-my $policy_name		= "1.3.6.1.4.1.2620.1.1.2.0"; # Installed policy name
-my $connections		= "1.3.6.1.4.1.2620.1.1.25.3.0"; # number of connections
-#my $connections_peak	= "1.3.6.1.4.1.2620.1.1.25.4.0"; # peak number of connections
-my @fw_checks 		= ($policy_state,$policy_name,$connections);
+my $policy_state	  = "1.3.6.1.4.1.2620.1.1.1.0"; # "Installed"
+my $policy_name		  = "1.3.6.1.4.1.2620.1.1.2.0"; # Installed policy name
+my $connections		  = "1.3.6.1.4.1.2620.1.1.25.3.0"; # number of connections
+my $connectionsSR   = "1.3.6.1.4.1.2620.1.1.26.11.6.0" ; # fwConnectionsStatConnectionRate aka connx/seg
+my $connectionsPeak	= "1.3.6.1.4.1.2620.1.1.25.4.0"; # peak number of connections
+my @fw_checks 		  = ($policy_state,$policy_name,$connections,$connectionsSR,$connectionsPeak);
 
 ###### SVN data
 my $svn_status		= "1.3.6.1.4.1.2620.1.6.102.0"; # "OK" svn status
@@ -380,6 +385,8 @@ if (defined ($o_mgmt)) {
 my $fw_state=0;
 my $fw_print="";
 my $perf_conn=undef;
+my $perf_connSR=undef;
+my $perf_connPeak=undef;
 
 if (defined ($o_fw)) {
 
@@ -392,6 +399,8 @@ if (defined ($o_fw)) {
     verb("State : $$resultat{$policy_state}");
     verb("Name : $$resultat{$policy_name}");
     verb("connections : $$resultat{$connections}");
+    verb("connectionsSR : $$resultat{$connectionsSR}");
+    verb("connectionsPeak : $$resultat{$connectionsPeak}");
 
     if ($$resultat{$policy_state} ne "Installed") {
       $fw_state=2;
@@ -417,6 +426,8 @@ if (defined ($o_fw)) {
 	}
       }
       $perf_conn=$$resultat{$connections};
+      $perf_connSR=$$resultat{$connectionsSR};
+      $perf_connPeak=$$resultat{$connectionsPeak};
     }
   } else {
     $fw_print .= "cannot find oids";
@@ -548,6 +559,8 @@ if (($ha_state_n+$svn_state+$fw_state+$mgmt_state) == 0 ) {
 
 if (defined($o_perf) && defined ($perf_conn)) {
   $f_print .= " | fw_connexions=" . $perf_conn;
+  $f_print .= " | fw_connexionsSR=" . $perf_connSR;
+  $f_print .= " | fw_connexionsPeak=" . $perf_connPeak;
 }
 
 print "$f_print\n";
