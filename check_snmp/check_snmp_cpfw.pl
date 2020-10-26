@@ -5,9 +5,9 @@
 # Author  : Patrick Proy (patrick at proy.org)
 # Help : http://nagios.manubulon.com
 # Licence : GPL - http://www.fsf.org/licenses/gpl.txt
-# Patch 1.2.1a
+# Patch 1.2.1b
 # Author : monitoreo.osi@uchile.cl
-# Desc: add to things at fw checks, connectionrate & connection peak
+# Desc:  warn/crit threshold to conns/seg check
 # TODO : 
 # - check sync method
 #################################################################
@@ -22,7 +22,7 @@ use Getopt::Long;
 # Nagios specific
 
 use lib "/usr/local/nagios/libexec";
-#use lib "/usr/lib/nagios/plugins"; # use in ubugtu
+use lib "/usr/lib/nagios/plugins"; # use in ubugtu
 use utils qw(%ERRORS $TIMEOUT);
 #my $TIMEOUT = 15;
 #my %ERRORS=('OK'=>0,'WARNING'=>1,'CRITICAL'=>2,'UNKNOWN'=>3,'DEPENDENT'=>4);
@@ -30,11 +30,11 @@ use utils qw(%ERRORS $TIMEOUT);
 ########### SNMP Datas ########### 
 
 ###### FW data
-my $policy_state     = "1.3.6.1.4.1.2620.1.1.1.0"; # "Installed"
-my $policy_name      = "1.3.6.1.4.1.2620.1.1.2.0"; # Installed policy name
-my $connections      = "1.3.6.1.4.1.2620.1.1.25.3.0"; # number of connections
-my $connectionsSR    = "1.3.6.1.4.1.2620.1.1.26.11.6.0" ; # fwConnectionsStatConnectionRate aka connx/seg
-my $connectionsPeak  = "1.3.6.1.4.1.2620.1.1.25.4.0"; # peak number of connections
+my $policy_state     = "1.3.6.1.4.1.2620.1.1.1.0";        # Installed
+my $policy_name      = "1.3.6.1.4.1.2620.1.1.2.0";        # Installed policy name
+my $connections      = "1.3.6.1.4.1.2620.1.1.25.3.0";     # Number of connections
+my $connectionsSR    = "1.3.6.1.4.1.2620.1.1.26.11.6.0" ; # FwConnectionsStatConnectionRate aka connx/seg
+my $connectionsPeak  = "1.3.6.1.4.1.2620.1.1.25.4.0";     # Peak number of connections
 my @fw_checks        = ($policy_state,$policy_name,$connections,$connectionsSR,$connectionsPeak);
 
 ###### SVN data
@@ -45,19 +45,18 @@ my @svn_checks_oid  = ($svn_status);
 
 ###### HA data
 
-my $ha_active   = "1.3.6.1.4.1.2620.1.5.5.0";   # "yes"
-my $ha_state    = "1.3.6.1.4.1.2620.1.5.6.0";   # "active" / "standby"
-my $ha_block_state  = "1.3.6.1.4.1.2620.1.5.7.0";   #"OK" : ha blocking state
-my $ha_status   = "1.3.6.1.4.1.2620.1.5.102.0"; # "OK" : ha status
+my $ha_active       = "1.3.6.1.4.1.2620.1.5.5.0";       # "yes"
+my $ha_state        = "1.3.6.1.4.1.2620.1.5.6.0";       # "active" / "standby"
+my $ha_status       = "1.3.6.1.4.1.2620.1.5.102.0";     # "OK" : ha status
+my $ha_block_state  = "1.3.6.1.4.1.2620.1.5.7.0";       # "OK" : ha blocking state
 
-my %ha_checks   =( $ha_active,"yes",$ha_state,"active",$ha_block_state,"OK",$ha_status,"OK");
+my %ha_checks       =( $ha_active,"yes",$ha_state,"active",$ha_block_state,"OK",$ha_status,"OK");
 my %ha_checks_stand =( $ha_active,"yes",$ha_state,"standby",$ha_block_state,"OK",$ha_status,"OK");
-my %ha_checks_n   =( $ha_active,"HA active",$ha_state,"HA state",$ha_block_state,"HA block state",$ha_status,"ha_status");
-my @ha_checks_oid =( $ha_active,$ha_state,$ha_block_state,$ha_status);
+my %ha_checks_n     =( $ha_active,"HA active",$ha_state,"HA state",$ha_block_state,"HA block state",$ha_status,"ha_status");
+my @ha_checks_oid   =( $ha_active,$ha_state,$ha_block_state,$ha_status);
 
-my $ha_mode   = "1.3.6.1.4.1.2620.1.5.11.0";  # "Sync only"/"High Availability (Active Up)" : ha Working mode
-
-my $ha_tables   = "1.3.6.1.4.1.2620.1.5.13.1";  # ha status table
+my $ha_mode         = "1.3.6.1.4.1.2620.1.5.11.0";  # "Sync only"/"High Availability (Active Up)" : ha Working mode
+my $ha_tables       = "1.3.6.1.4.1.2620.1.5.13.1";  # ha status table
 my $ha_tables_index = ".1";
 my $ha_tables_name  = ".2";
 my $ha_tables_state = ".3"; # "OK"
@@ -67,9 +66,9 @@ my $ha_tables_prbdesc = ".6"; # Description if state is != "OK"
 
 ####### MGMT data
 
-my $mgmt_status   = "1.3.6.1.4.1.2620.1.7.5.0"; # "active" : management status
-my $mgmt_alive    = "1.3.6.1.4.1.2620.1.7.6.0";   # 1 : management is alive if 1
-my $mgmt_stat_desc  = "1.3.6.1.4.1.2620.1.7.102.0"; # Management status description
+my $mgmt_status   = "1.3.6.1.4.1.2620.1.7.5.0";       # "active" : management status
+my $mgmt_alive    = "1.3.6.1.4.1.2620.1.7.6.0";       # 1 : management is alive if 1
+my $mgmt_stat_desc  = "1.3.6.1.4.1.2620.1.7.102.0";   # Management status description
 my $mgmt_stats_desc_l = "1.3.6.1.4.1.2620.1.7.103.0"; # Management status long description
 
 my %mgmt_checks   = ($mgmt_status,"active",$mgmt_alive,"1");
@@ -78,30 +77,33 @@ my @mgmt_checks_oid = ($mgmt_status,$mgmt_alive);
 
 #################################### Globals ##############################""
 
-my $Version='1.2.1';
+my $Version='1.2.1b';
 
-my $o_host =  undef;    # hostname
+my $o_host =  undef;      # hostname
 my $o_community = undef;  # community
-my $o_version2  =undef;   # Version 2
-my $o_port =  161;    # port
-my $o_help= undef;    # wan't some help ?
-my $o_verb= undef;    # verbose mode
+my $o_version2  = undef;  # Version 2
+my $o_port =  161;        # port
+my $o_help= undef;        # wan't some help ?
+my $o_verb= undef;        # verbose mode
 my $o_version=  undef;    # print version
-my $o_timeout=  5;              # Default 5s Timeout
-my $o_warn= undef;    # Warning for connections
-my $o_crit= undef;    # Crit for connections
-my $o_svn=  undef;    # Check for SVN status
-my $o_fw= undef;    # Check for FW status
-my $o_ha= undef;    # Check for HA status
-my $o_mgmt= undef;    # Check for management status
-my $o_policy= undef;    # Check for policy name
-my $o_conn= undef;    # Check for connexions
-my $o_perf= undef;    # Performance data output 
+my $o_timeout=  5;        # Default 5s Timeout
+my $o_warn= undef;        # Warning for connections
+my $o_crit= undef;        # Crit for connections
+my $o_warnSR= undef;      # Warning for connectionsSR
+my $o_critSR= undef;      # Crit for connectionsSR
+my $o_svn=  undef;        # Check for SVN status
+my $o_fw= undef;          # Check for FW status
+my $o_ha= undef;          # Check for HA status
+my $o_mgmt= undef;        # Check for management status
+my $o_policy= undef;      # Check for policy name
+my $o_conn= undef;        # Check for connexions
+my $o_connSR= undef;      # Check for connexionsSR
+my $o_perf= undef;        # Performance data output 
 
 # SNMPv3 specific
-my $o_login=  undef;    # Login for snmpv3
-my $o_passwd= undef;    # Pass for snmpv3
-my $v3protocols=undef;  # V3 protocol list.
+my $o_login=  undef;      # Login for snmpv3
+my $o_passwd= undef;      # Pass for snmpv3
+my $v3protocols=undef;    # V3 protocol list.
 my $o_authproto='md5';    # Auth protocol
 my $o_privproto='des';    # Priv protocol
 my $o_privpass= undef;    # priv password
@@ -111,7 +113,7 @@ my $o_privpass= undef;    # priv password
 sub p_version { print "check_snmp_cpfw version : $Version\n"; }
 
 sub print_usage {
-    print "Usage: $0 [-v] -H <host> -C <snmp_community> [-2] | (-l login -x passwd [-X pass -L <authp>,<privp>]) [-s] [-w [-p=pol_name] [-c=warn,crit]] [-m] [-a [standby] ] [-f] [-p <port>] [-t <timeout>] [-V]\n";
+    print "Usage: $0 [-v] -H <host> -C <snmp_community> [-2] | (-l login -x passwd [-X pass -L <authp>,<privp>]) [-s] [-w [-p=pol_name] [-c=warn,crit]] [-r=warn,crit]]  [-m] [-a [standby] ] [-f] [-p <port>] [-t <timeout>] [-V]\n";
 }
 
 sub isnnum { # Return true if arg is not a number
@@ -122,7 +124,7 @@ sub isnnum { # Return true if arg is not a number
 
 sub help {
    print "\nSNMP Checkpoint FW-1 Monitor for Nagios version ",$Version,"\n";
-   print "GPL Licence, (c)2004-2007 - Patrick Proy\n\n";
+   print "GPL Licence, (c)2004-2020 - Patrick Proy\n\n";
    print_usage();
    print <<EOT;
 -v, --verbose
@@ -162,6 +164,8 @@ sub help {
    SNMP port (Default 161)
 -t, --timeout=INTEGER
    timeout for SNMP (Default: Nagios default)   
+-r, --connexionsSR=WARN,CRIT
+   check warn and critical number of connexionsSR (must have -w)
 -V, --version
    prints version number
 EOT
@@ -191,51 +195,63 @@ sub check_options {
   'm' => \$o_mgmt,    'mgmt'    => \$o_mgmt,
   'p:s' => \$o_policy,    'policy:s'  => \$o_policy,
   'c:s' => \$o_conn,    'connexions:s'  => \$o_conn,
+  'r:s' => \$o_connSR,   'rate:s' => \$o_connSR,
   'f' => \$o_perf,    'perfparse' => \$o_perf
-    );
+  );
     if (defined ($o_help) ) { help(); exit $ERRORS{"UNKNOWN"}};
     if (defined($o_version)) { p_version(); exit $ERRORS{"UNKNOWN"}};
     if ( ! defined($o_host) ) # check host and filter 
-  { print_usage(); exit $ERRORS{"UNKNOWN"}}
+      { print_usage(); exit $ERRORS{"UNKNOWN"}}
     # check snmp information
     if ( !defined($o_community) && (!defined($o_login) || !defined($o_passwd)) )
-    { print "Put snmp login info!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
-  if ((defined($o_login) || defined($o_passwd)) && (defined($o_community) || defined($o_version2)) )
-    { print "Can't mix snmp v1,2c,3 protocols!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
-  if (defined ($v3protocols)) {
-    if (!defined($o_login)) { print "Put snmp V3 login info with protocols!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
-    my @v3proto=split(/,/,$v3protocols);
-    if ((defined ($v3proto[0])) && ($v3proto[0] ne "")) {$o_authproto=$v3proto[0];  } # Auth protocol
-    if (defined ($v3proto[1])) {$o_privproto=$v3proto[1]; } # Priv  protocol
-    if ((defined ($v3proto[1])) && (!defined($o_privpass))) {
-      print "Put snmp V3 priv login info with priv protocols!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
-  }
+      { print "Put snmp login info!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+    if ((defined($o_login) || defined($o_passwd)) && (defined($o_community) || defined($o_version2)) )
+      { print "Can't mix snmp v1,2c,3 protocols!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+    if (defined ($v3protocols)) {
+      if (!defined($o_login)) { print "Put snmp V3 login info with protocols!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+      my @v3proto=split(/,/,$v3protocols);
+      if ((defined ($v3proto[0])) && ($v3proto[0] ne "")) {$o_authproto=$v3proto[0];  } # Auth protocol
+      if (defined ($v3proto[1])) {$o_privproto=$v3proto[1]; } # Priv  protocol
+      if ((defined ($v3proto[1])) && (!defined($o_privpass))) {
+        print "Put snmp V3 priv login info with priv protocols!\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+    }
     # Check firewall options
     if ( defined($o_conn)) {
       if ( ! defined($o_fw))
-  { print "Cannot check connexions without checking fw\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+        { print "Cannot check connexions without checking fw\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
       my @warncrit=split(/,/ , $o_conn);
       if ( $#warncrit != 1 ) 
         { print "Put warn,crit levels with -c option\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
       ($o_warn,$o_crit)=@warncrit;
       if ( isnnum($o_warn) || isnnum($o_crit) )
-  { print "Numeric values for warning and critical in -c options\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
-      if ($o_warn >= $o_crit)
-  { print "warning <= critical ! \n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+        { print "Numeric values for warning and critical in -c options\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+          if ($o_warn >= $o_crit)
+           { print "warning <= critical ! \n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+    }
+    if ( defined($o_connSR)) {
+      if ( ! defined($o_fw))
+        { print "Cannot check connexionsSR without checking fw\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+      my @warncritSR=split(/,/ , $o_connSR);
+      if ( $#warncritSR != 1 ) 
+        { print "Put warn,crit levels with -c option\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+      ($o_warnSR,$o_critSR)=@warncritSR;
+      if ( isnnum($o_warnSR) || isnnum($o_critSR) )
+        { print "Numeric values for warning and critical in -r options\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+          if ($o_warnSR >= $o_critSR)
+           { print "warning <= critical ! \n";print_usage(); exit $ERRORS{"UNKNOWN"}}
     }
     if ( defined($o_policy)) {
       if (! defined($o_fw))
-  { print "Cannot check policy name without checking fw\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
+        { print "Cannot check policy name without checking fw\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
       if ($o_policy eq "")
         { print "Put a policy name !\n"; print_usage(); exit $ERRORS{"UNKNOWN"}}
     }
     if (defined($o_perf) && ! defined ($o_conn))
-  { print "Nothing selected for perfparse !\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+      { print "Nothing selected for perfparse !\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
     if (!defined($o_fw) && !defined($o_ha) && !defined($o_mgmt) && !defined($o_svn))
-  { print "Must select a product to check !\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
+      { print "Must select a product to check !\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
     if (defined ($o_ha) && ($o_ha ne "") && ($o_ha ne "standby")) 
-  { print "-a option comes with 'standby' or nothing !\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
-  
+      { print "-a option comes with 'standby' or nothing !\n";print_usage(); exit $ERRORS{"UNKNOWN"}}
 }
 
 ########## MAIN #######
@@ -282,7 +298,7 @@ if ( defined($o_login) && defined($o_passwd)) {
       -authpassword => $o_passwd,
       -authprotocol => $o_authproto,
       -privpassword => $o_privpass,
-    -privprotocol => $o_privproto,
+      -privprotocol => $o_privproto,
       -timeout          => $o_timeout
     );
   }
@@ -417,13 +433,27 @@ if (defined ($o_fw)) {
 
     if (defined($o_conn)) {
       if ($$resultat{$connections} > $o_crit) {
-   $fw_state=2;
+        $fw_state=2;
         $fw_print .= "Connexions : ".$$resultat{$connections}." > ".$o_crit." ";
       } else {
-  if ($$resultat{$connections} > $o_warn) {
-    if ($fw_state!=2) {$fw_state=1;}
-    $fw_print .= "Connexions : ".$$resultat{$connections}." > ".$o_warn." ";    
-  }
+      if ($$resultat{$connections} > $o_warn) {
+        if ($fw_state!=2) {$fw_state=1;}
+          $fw_print .= "Connexions : ".$$resultat{$connections}." > ".$o_warn." ";    
+          }
+      }
+      $perf_conn=$$resultat{$connections};
+      $perf_connSR=$$resultat{$connectionsSR};
+      $perf_connPeak=$$resultat{$connectionsPeak};
+    }
+    if (defined($o_connSR)) {
+      if ($$resultat{$connectionsSR} > $o_critSR) {
+        $fw_state=3;
+        $fw_print .= "Connexions : ".$$resultat{$connectionsSR}." > ".$o_critSR." ";
+      } else {
+      if ($$resultat{$connectionsSR} > $o_warnSR) {
+        if ($fw_state!=3) {$fw_state=1;}
+          $fw_print .= "Connexions : ".$$resultat{$connectionsSR}." > ".$o_warnSR." ";    
+          }
       }
       $perf_conn=$$resultat{$connections};
       $perf_connSR=$$resultat{$connectionsSR};
