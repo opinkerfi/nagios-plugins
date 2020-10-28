@@ -5,7 +5,7 @@
 # Author  : Patrick Proy (patrick at proy.org)
 # Help : http://nagios.manubulon.com
 # Licence : GPL - http://www.fsf.org/licenses/gpl.txt
-# Patch 1.2.1b
+# Patch 1.2.1c
 # Author : monitoreo.osi@uchile.cl
 # Desc:  warn/crit threshold to conns/seg check
 # TODO : 
@@ -21,7 +21,7 @@ use Getopt::Long;
 
 # Nagios specific
 
-use lib "/usr/local/nagios/libexec";
+#use lib "/usr/local/nagios/libexec";
 use lib "/usr/lib/nagios/plugins"; # use in ubugtu
 use utils qw(%ERRORS $TIMEOUT);
 #my $TIMEOUT = 15;
@@ -448,11 +448,11 @@ if (defined ($o_fw)) {
     if (defined($o_connSR)) {
       if ($$resultat{$connectionsSR} > $o_critSR) {
         $fw_state=3;
-        $fw_print .= "Connexions : ".$$resultat{$connectionsSR}." > ".$o_critSR." ";
+        $fw_print .= "Conn/seg  : ".$$resultat{$connectionsSR}." > ".$o_critSR." ";
       } else {
       if ($$resultat{$connectionsSR} > $o_warnSR) {
         if ($fw_state!=3) {$fw_state=1;}
-          $fw_print .= "Connexions : ".$$resultat{$connectionsSR}." > ".$o_warnSR." ";    
+          $fw_print .= "Conn/seg : ".$$resultat{$connectionsSR}." > ".$o_warnSR." ";    
           }
       }
       $perf_conn=$$resultat{$connections};
