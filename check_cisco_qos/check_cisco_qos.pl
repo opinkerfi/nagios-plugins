@@ -279,7 +279,7 @@ $fname = $opt_i;
 $fname =~ s/:/-/g;
 $fname =~ s/\//-/g;
 $fname =~ s/\./-/g;
-$fname = $tmp . "/check_cisco_qos." . $hostname . "." . $fname . "." . $class;
+$fname = $tmp . "/check_cisco_qos." . $> . "." . $hostname . "." . $fname . "." . $class;
 if ( $opt_d ) {
   print "Using temporary file: $fname\n";
 }
@@ -630,8 +630,8 @@ sub get_config
       if ($qos_config_value == $class_id ) {
         foreach $ifIndex (sort keys %qos_interfaces) {
           if ($ifIndex eq $qos_index[0]) {
-            $tmp   = $ifIndex . "." . $ifIndex;
-            $policyIndex  = $qos_config{$tmp};
+            my $tmpi   = $ifIndex . "." . $ifIndex;
+            $policyIndex  = $qos_config{$tmpi};
             $policyName   = $qos_policies{$policyIndex};
             $ifPolicy = $qos_interfaces{$ifIndex};
 	    $post_oid = $cbQosCMPostPolicyByte.".".$i;
