@@ -21,6 +21,35 @@
 # You will need the sssu binary in path (/usr/bin/sssu is a good place)
 # If you do not have sssu, check your commandview CD, it should have both
 # binaries for Windows and Linux
+#
+# UPDATE HISTORY:
+# 22 Jul 2015: Alastair Munro:
+# Disk failures need a Enclosure and Bay location so we can get failed disks easily replaced. Thus
+# changed objectname to this for disk checks.
+# Disk checks: include the comments field for the eva, so we can easily log a ticket with HP (we
+# include eva serial number and DC cabinet location in here).
+# System check: included comments
+# If check_system and system specified; drop system name from perf data fields and add Gb.
+# Turn off perfdata for disk shelves; we don't need to graph how many fc ports it has, etc; these rarely change!
+#
+# 17 Mar 2016: Alastair Munro:
+# No --system in the help; I wanted to add this and only discovered it by looking at the code!
+# Bring back reporting number of disks checked.
+# Cleaned up error reporting on failed disks.
+# Added --option and then noemptybays. All disk shelves should be fully populated with disks and all 
+#  shelves have the same number of disks. If a disk fails, it may get evicted and this will catch this.
+#  This is part of the check_disks mode. Report warning if bays not full.
+#
+# 04 Apr 2016: Alastair Munro:
+# notinstalled is not a valid state for fans; especially for disk shelves. Thus alert on this.
+# check operationalstatedetail is not _ok. Sometimes objects report good but the detail is not _ok (eg _attention).
+# for disk enclosure, advise enclosure name and state before printing number of sensors, fans, etc.
+#
+# 10 May 2016: Alastair Munro:
+# check_controllers: powersources searching for key status rather than state. Now identifies failed/missing power supplies.
+#
+# 20 May 2016: Alastair Munro:
+# noemptybays not working as expected; tweaked to count disks rather than highest disk.
 
 
 # Some Defaults
@@ -42,6 +71,7 @@ do_phone_home = False
 escape_newlines = False
 check_system = None  # By default check all systems
 proxyserver = None
+options = None
 timeout = 0  # 0 means no timeout
 
 
@@ -94,12 +124,16 @@ def print_help():
     print " [--password <password]"
     print " [--path </path/to/sssu>]"
     print " [--mode <mode>] "
+    print " [--system <eva>] "
     print " [--test]"
     print " [--timeout <timeout>]"
+    print " [--options <noemptybays>]"
     print " [--debug]"
     print " [--help]"
     print ""
     print " Valid modes are: %s" % ', '.join(valid_modes)
+    print " --options are dependant on --mode:"
+    print "   noemptybays (check_disks): don't ignore empty bays as a disk may have been removed. Assumes all bays are populated."
     print ""
     print "Example: %s --host commandview.example.net --username eva --password myPassword --mode check_systems" % (argv[0])
 
@@ -163,6 +197,8 @@ while len(arguments) > 0:
         proxyserver = arguments.pop(0)
     elif arg == '--escape-newlines':
         escape_newlines = True
+    elif arg == '--options':
+        options = arguments.pop(0)
     elif arg == '-h' or arg == '--help':
         print_help()
         exit(ok)
@@ -473,6 +509,43 @@ def check_operationalstate(my_object, print_failed_objects=False, namefield='obj
           (my_object[namefield], my_object['operationalstate'], my_object[detailfield]))
     return ok
 
+# Count no. disks per shelf:
+# Count no disks per shelf; highest value is number to expect per shelf.
+# Report any shelves not equal to highest value.
+# An oddity is that there may be a gap in the numbering!
+#
+def check_numdisks_pershelf(disk,systemname):
+    rtn={}
+    rtn['systemname']=systemname
+    rtn['state']=0
+    rtn['text']=None
+    bay={}
+
+    for x in disk:
+        s=x['shelfnumber']
+        b=int(x['diskbaynumber'])
+        bay.setdefault(s, 0)
+        bay[s] += 1
+
+    maxdisk=max(bay.values())
+
+    ns=len(bay)
+    for k in sorted(bay, key=int):
+        if bay[k] < maxdisk:
+            if rtn['text'] is None:
+                rtn['state']=1
+                rtn['text']="\n%s: Failed disk/s? Some of the %d shelves have < %d disks: shelf%s=%d" % (
+                    systemname, ns, maxdisk, k, bay[k])
+            else:
+                rtn['text']+=", shelf%s=%d" % ( k, bay[k])
+
+    if rtn['text'] is None:
+       rtn['text']="\n%s: All %d disk shelves have %d disks each." % (systemname, ns, maxdisk)
+    else:
+       rtn['text']+="."
+    rtn['text']+="\n"
+    return rtn
+
 
 def check_generic(command="ls disk full", namefield="objectname", perfdata_fields=None, longserviceoutputfields=None, detailedsummary=False):
     if not perfdata_fields:
@@ -480,6 +553,7 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
     if not longserviceoutputfields:
         longserviceoutputfields = []
     global perfdata
+    global options
     nagios_state = ok
     systems = run_sssu()
     objects = []
@@ -490,10 +564,20 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
     else:
         for i in systems:
             result = run_sssu(system=i['objectname'], command=command)
+            if options == "noemptybays":
+               shelves=check_numdisks_pershelf(result,i['objectname'])
+               nagios_state = max(shelves['state'], nagios_state)
+               longoutput(shelves['text'])
+
             for x in result:
                 x['systemname'] = i['objectname']
+                x['comments'] = i['comments']
                 objects.append(x)
-    summary = "%s objects found " % len(objects)
+
+
+    summary = "%s objects " % len(objects)
+    #print objects # debug
+
     usedstoragespacegb = 0
     occupancyalarmlvel = 0
     warninggb = 0
@@ -504,6 +588,9 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
             objectname = i[namefield]
         else:
             objectname = i['objectname']
+
+        if command == "ls disk full":
+            encbay = "Enc%s_Bay%s" % (i['shelfnumber'], i['diskbaynumber'] )
         # Some versions of CV also return garbage objects, luckily it is easy
         # to find these
         if i.has_key('objecttype') and i['objecttype'] == 'typenotset':
@@ -513,19 +600,43 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
         # Lets see if this object is working
         nagios_state = max(check_operationalstate(i), nagios_state)
 
+        if command == "ls diskshelf full":
+             longoutput("%s/%s=%s (%s)\n" %
+                 (systemname, objectname, i['operationalstate'], i['operationalstatedetail']))
+
         # Lets add to the summary
-        if i['operationalstate'] != 'good' or detailedsummary == True:
-            summary += " %s/%s=%s " % (
-                systemname, objectname, i['operationalstate'])
+        #if i['operationalstate'] != 'good' or detailedsummary == True:
+        if i['operationalstate'] != 'good' or detailedsummary == True or not '_ok' in i['operationalstatedetail']:
+            if command == "ls disk full":
+                summary += " %s/%s (eva_comment=%s)=%s (%s)" % (
+                    systemname, encbay, i['comments'], i['operationalstate'], i['operationalstatedetail'])
+            else:
+                if i['operationalstate'] == "good":
+                   summary += " %s/%s=%s" % (
+                       systemname, objectname, i['operationalstatedetail'])
+                else:
+                   summary += " %s/%s=%s (%s)" % (
+                       systemname, objectname, i['operationalstate'],i['operationalstatedetail'])
+
+            if not '_ok' in i['operationalstatedetail']:
+                nagios_state = max(warning, nagios_state)
 
         # Lets get some perfdata
-        identifier = "%s/%s_" % (systemname, objectname)
+        if check_system is not None:
+           identifier = "%s_" % objectname
+        else:
+           identifier = "%s/%s_" % (systemname, objectname)
+
         i['identifier'] = identifier
 
         for field in perfdata_fields:
             if field == '':
                 continue
-            add_perfdata("'%s%s'=%s " %
+            if command == 'ls system full' and check_system != None:
+               add_perfdata("'%s'=%sGb " %
+                         (field, i.get(field, None)))
+            else:
+               add_perfdata("'%s%s'=%s " %
                          (identifier, field, i.get(field, None)))
 
         # Disk group gets a special perfdata treatment
@@ -538,11 +649,10 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
                          (identifier, usedstoragespacegb, warninggb, totalstoragespacegb))
 
         # Long Serviceoutput
-
-        # There are usually to many disks for nagios to display. Skip.
-        if command != "ls disk full":
-            longoutput("\n%s/%s = %s (%s)\n" %
-                       (systemname, objectname, i['operationalstate'], i['operationalstatedetail']))
+        if command == "ls disk full":
+                longoutput("\n%s/%s (%s)=%s (%s)\n" %
+                       (systemname, objectname, encbay, i['operationalstate'], i['operationalstatedetail']))
+                       #(systemname, objectname, i['operationalstate'], i['operationalstatedetail']))
 
         # If diskgroup has a problem because it is over allocated. Lets inform
         # about that
@@ -552,9 +662,11 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
                     (state[warning], occupancyalarmlvel))
         # If a disk has a problem, lets display some extra info on it
         elif command == "ls disk full" and i['operationalstate'] != 'good':
-            longoutput("Warning - %s=%s (%s)\n" %
-                       (i['diskname'], i['operationalstate'], i['operationalstatedetail']))
-            fields = "modelnumber firmwareversion serialnumber failurepredicted  diskdrivetype".split(
+            longoutput("Issues on this drive. Further details:\n")
+            #longoutput("Warning - %s/%s=%s (%s)\n" %
+                       #(systemname, encbay, i['operationalstate'], i['operationalstatedetail']))
+            #fields = "objectname modelnumber firmwareversion serialnumber failurepredicted diskdrivetype shelfnumber diskbaynumber comments".split(
+            fields = "modelnumber firmwareversion serialnumber failurepredicted diskdrivetype shelfnumber diskbaynumber comments".split(
             )
             for field in fields:
                 longoutput("- %s = %s\n" % (field, i[field]))
@@ -583,9 +695,13 @@ def check_multiple_objects(my_object, name):
         namefield = "name"
         detailfield = 'operationalstatedetail'
 
-        if name == 'fans' or name == 'sensors':
+        #if name == 'fans' or name == 'sensors':
+        if name == 'sensors':
             valid_states = [
                 'good', 'notavailable', 'unsupported', 'notinstalled']
+        elif name == 'fans':
+            valid_states = [
+                'good', 'notavailable', 'unsupported']
         elif name == 'fibrechannelports':
             valid_states.append('notinstalled')
         num_items = len(my_object[name])
@@ -611,7 +727,7 @@ def check_controllers():
         for controller in result:
             controller['systemname'] = i['objectname']
             controllers.append(controller)
-    summary = "%s objects found " % len(controllers)
+    summary = "%s objects " % len(controllers)
     for i in controllers:
         systemname = i['systemname']
         if i.has_key('controllername'):
@@ -688,11 +804,12 @@ def check_controllers():
         if i.has_key('powersources'):
             for source in i['powersources']:
                 source_state = max(source_state, ok)
-                if not source.has_key('status'):
+                #if not source.has_key('status'): # Should be state not status
+                if not source.has_key('state'):
                     continue
                 if source['state'] != 'good':
                     source_state = max(warning, source_state)
-                    longoutput("Powersource %s status = %s\n" %
+                    longoutput("Powersource %s state = %s\n" %
                                (source['type'], source['state']))
         if i.has_key('modules'):
             for module in i['modules']:
@@ -739,7 +856,7 @@ signal.alarm(timeout)
 if mode == 'check_systems':
     perfdata_fields = 'totalstoragespace usedstoragespace availablestoragespace'.split(
     )
-    longserviceoutputfields = 'licensestate systemtype firmwareversion nscfwversion totalstoragespace usedstoragespace availablestoragespace'.split(
+    longserviceoutputfields = 'comments licensestate systemtype firmwareversion nscfwversion totalstoragespace usedstoragespace availablestoragespace'.split(
     )
     command = "ls system full"
     namefield = "objectname"
@@ -758,6 +875,7 @@ elif mode == 'check_diskgroups':
 elif mode == 'check_disks':
     check_generic(command="ls disk full", namefield="objectname")
 elif mode == 'check_diskshelfs' or mode == 'check_diskshelves':
+    show_perfdata = False # Ideally should fixed the code; but this does the trick!
     check_generic(command="ls diskshelf full", namefield="diskshelfname",
                   longserviceoutputfields=[], perfdata_fields=[])
 else:
