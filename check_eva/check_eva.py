@@ -497,6 +497,7 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
     usedstoragespacegb = 0
     occupancyalarmlvel = 0
     warninggb = 0
+    gooddisks = 0
     for i in objects:
         systemname = i['systemname']
         # Some versions of commandview use "objectname" instead of namefield
@@ -527,6 +528,12 @@ def check_generic(command="ls disk full", namefield="objectname", perfdata_field
                 continue
             add_perfdata("'%s%s'=%s " %
                          (identifier, field, i.get(field, None)))
+
+        # Count disks with operationalstate good
+        if command == "ls disk full":
+            if i['operationalstate'] == 'good':
+                gooddisks += 1
+                perfdata = "'Good Disks'=" + str(gooddisks)
 
         # Disk group gets a special perfdata treatment
         if command == "ls disk_group full":
