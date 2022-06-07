@@ -1,6 +1,4 @@
 #!/bin/env python
-
-#
 # Gather the cluster state and the current node state
 #
 # Output example:
@@ -23,6 +21,14 @@
 #</clustat>
 #
 # Frank Clements <frank @ sixthtoe.net>
+#
+# INFO : In RHEL 5, there is a bug in clustat preventing non-root users to use 
+# clustat. See https://bugzilla.redhat.com/show_bug.cgi?id=531273
+# You might need to use setuid on clustat to change this if rgmanager cannot be
+# upgraded to 3.0.7+
+# $chown root:nagios /usr/sbin/clustat
+# $chmod u+s /usr/sbin/clustat
+
 
 import xml.dom.minidom
 import os
@@ -112,6 +118,7 @@ def main():
         sys.exit(2)
 
     check_suspend = False
+    typeCheck = None
     for o, a in opts:
         if o in ('-c', '--cluster'):
             typeCheck = 'cluster'
@@ -124,6 +131,10 @@ def main():
             usage()
             sys.exit()
 
+    if typeCheck == None:
+        usage()
+        sys.exit()
+
     try:
         clustatOutput = os.popen('/usr/sbin/clustat -fx')
         dom = xml.dom.minidom.parse(clustatOutput)
@@ -133,7 +144,7 @@ def main():
     if typeCheck == 'cluster':
 
         # First we query for the state of the cluster itself.
-        # Should it be found tha the cluste ris not quorate we alert and exit immediately
+        # Should it be found that the cluster is not quorate we alert and exit immediately
         cluster = getClusterName(dom)
         qState  = getQuorumState(dom)
 
@@ -145,15 +156,18 @@ def main():
         # Now we find the status of the local node from clustat.
         # We only care about the local state since this way we can tie the alert to the host.
         nodeStates = getLocalNodeState(dom) 
-        if nodeStates['state'] != "1":
-            print "WARNING: Local node state is offline!"
-            sys.exit(1)
-        elif nodeStates['rgmanager'] != "1":
-            print "CRITICAL: RGManager service not running on " + nodeStates['name'] + "!"
-            sys.exit(1) 
-        else:
-            print "OK: Cluster node " + nodeStates['name'] + " is online and cluster is quorate."
-            sys.exit(0)
+        if nodeStates == {}:
+            print "UNKNOWN: Local node informations couldn't be found!"
+            sys.exit(3)
+            if nodeStates['state'] != "1":
+                print "WARNING: Local node state is offline!"
+                sys.exit(1)
+            elif nodeStates['rgmanager'] != "1":
+                print "CRITICAL: RGManager service not running on " + nodeStates['name'] + "!"
+                sys.exit(2) 
+            else:
+                print "OK: Cluster node " + nodeStates['name'] + " is online and cluster is quorate."
+                sys.exit(0)
 
     elif typeCheck == 'service':
         serviceState = getServiceState(dom, serviceName)
